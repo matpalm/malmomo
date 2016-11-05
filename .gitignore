@@ -1,0 +1,10 @@
+runs
+*pb2.py
+*out
+*stats
+*tsv
+venv
+*pyc
+MalmoPython.so
+Python_Examples
+*~
