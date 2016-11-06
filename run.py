@@ -15,18 +15,23 @@ np.set_printoptions(precision=5, threshold=10000, suppress=True, linewidth=10000
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--run', type=int, default=None, help="output data to runs/N")
+parser.add_argument('--width', type=int, default=160, help="render width")
+parser.add_argument('--height', type=int, default=120, help="render height")
 opts = parser.parse_args()
 
 #output_dir = "runs/%d/" % opts.run
 
 # set up out malmo client
 malmo = MalmoPython.AgentHost()
-mission = MalmoPython.MissionSpec(open("classroom_basic.xml").read(), True)
+spec = open("classroom_basic.xml").read()
+spec = spec.replace("__WIDTH__", str(opts.width))
+spec = spec.replace("__HEIGHT__", str(opts.height))
+mission = MalmoPython.MissionSpec(spec, True)
 mission_record = MalmoPython.MissionRecordSpec()
 
 # init out rl_agent
 #agent = agents.RandomAgent()
-agent = agents.NafAgent()
+agent = agents.NafAgent(opts)
 
 for episode in itertools.count(1):
   print "EPISODE", episode

@@ -13,9 +13,10 @@ class RandomAgent(object):
 
 
 class NafAgent(object):
-  def __init__(self):
+  def __init__(self, opts):
+    render_shape = (opts.height, opts.width, 3)
     self.replay_memory = replay_memory.ReplayMemory(buffer_size=20, 
-                                                    state_shape=(60,80,3), 
+                                                    state_shape=render_shape,
                                                     action_dim=2,
                                                     load_factor=1.2)
 

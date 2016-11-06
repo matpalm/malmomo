@@ -53,8 +53,8 @@
     </AgentStart>
     <AgentHandlers>
       <VideoProducer want_depth="false">
-        <Width>80</Width>
-        <Height>60</Height>
+        <Width>__WIDTH__</Width>
+        <Height>__HEIGHT__</Height>
       </VideoProducer>
       <ObservationFromFullStats />
       <ContinuousMovementCommands turnSpeedDegs="180">
