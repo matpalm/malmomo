@@ -41,7 +41,7 @@
           <hintLikelihood>1</hintLikelihood>
         </specification>
       </ClassroomDecorator>
-      <ServerQuitFromTimeUp timeLimitMs="10000" description="out_of_time"/>
+      <ServerQuitFromTimeUp timeLimitMs="2000" description="out_of_time"/>
       <ServerQuitWhenAnyAgentFinishes />
     </ServerHandlers>
   </ServerSection>
@@ -53,8 +53,8 @@
     </AgentStart>
     <AgentHandlers>
       <VideoProducer want_depth="false">
-        <Width>160</Width>
-        <Height>120</Height>
+        <Width>80</Width>
+        <Height>60</Height>
       </VideoProducer>
       <ObservationFromFullStats />
       <ContinuousMovementCommands turnSpeedDegs="180">
