@@ -1,7 +1,12 @@
+import datetime
+import gzip
 import json
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import tensorflow as tf
+import StringIO
+
 
 def add_opts(parser):
   parser.add_argument('--gradient-clip', type=float, default=5,
@@ -13,6 +18,8 @@ def add_opts(parser):
   parser.add_argument('--print-gradients', action='store_true', 
                       help="whether to verbose print all gradients and l2 norms")
 
+def dts():
+  return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 def clip_and_debug_gradients(gradients, opts):
   # extract just the gradients temporarily for global clipping and then rezip
@@ -47,6 +54,18 @@ def shape_and_product_of(t):
       # Dimension(None)
       pass
   return "%s #%s" % (t.get_shape(), shape_product)
+
+def rgb_to_png(rgb):
+  """convert RGB data from render to png"""
+  sio = StringIO.StringIO()
+  plt.imsave(sio, rgb)
+  return sio.getvalue()
+
+def png_to_rgb(png_bytes):
+  """convert png (from rgb_to_png) to RGB"""
+  # note PNG is always RGBA so we need to slice off A
+  rgba = plt.imread(StringIO.StringIO(png_bytes))
+  return rgba[:,:,:3]
 
 
 class OrnsteinUhlenbeckNoise(object):

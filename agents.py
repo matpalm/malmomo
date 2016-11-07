@@ -1,4 +1,5 @@
 from collections import *
+import event_log
 import models
 import numpy as np
 import replay_memory
@@ -15,21 +16,31 @@ def add_opts(parser):
                       help="max size of replay memory")
   parser.add_argument('--replay-memory-burn-in', type=int, default=100,
                       help="dont train from replay memory until it reaches this size")
+  parser.add_argument('--event-log-out', type=str, default=None,
+                      help="if set agent also write all episodes to this file")
+
 
 class RandomAgent(object):
   def __init__(self, opts):
     self.stats_ = Counter()
+    if opts.event_log_out:
+      self.event_log = event_log.EventLog(opts.event_log_out)    
 
   def action_given(self, state):
-    return map(float, (np.random.random(size=2)*2)-1)
+    turn = (np.random.random()*2)-1    # (-1,1) for turn
+    move = (np.random.random()*2)-0.5  # (-0.5,1.5) for move, i.e. favor moving forward
+    return turn, move
 
-  def train(self, state_action_rewards):
+  def add_episode(self, episode):
     self.stats_['runs'] += 1
-    if state_action_rewards[-1][2] != 0:
+    if episode[-1][2] != 0:
       self.stats_['was_successful'] += 1
+    if self.event_log:
+      self.event_log.add_episode(episode)
 
   def stats(self):
     return self.stats_
+
 
 class NafAgent(object):
   def __init__(self, opts):
@@ -74,9 +85,9 @@ class NafAgent(object):
     with self.sess.as_default():
       return self.network.action_given(state, add_noise=True)
 
-  def train(self, state_action_rewards):
+  def add_episode(self, episode):
     start = time.time()
-    self.replay_memory.add_episode(state_action_rewards)    
+    self.replay_memory.add_episode(episode)
     print "replay_memory.add_episode", time.time()-start
 
     if self.replay_memory.size() > self.opts.replay_memory_burn_in:

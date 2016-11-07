@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+service Model {
+  rpc ActionGivenState(Render) returns (Action) {}
+  rpc AddEpisode(Episode) returns (Empty) {}
+}
+
+message Empty {
+}
+
+message Render {
+  int32 height = 1;
+  int32 width = 2;
+  bytes bytes = 3;
+  bool is_png_encoded = 4;
+}
+
+message Action {
+  repeated float value = 1;
+}
+
+message Event {
+  Render render = 1;
+  Action action = 2;
+  float reward = 3;
+}
+
+message Episode {
+  repeated Event event = 1;
+}
