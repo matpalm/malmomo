@@ -105,6 +105,9 @@ class ReplayMemory(object):
       self.insert = 0
       self.full = True
 
+  def size(self):
+    return self.buffer_size if self.full else self.insert
+
   def random_indexes(self, n=1):
     if self.full:
       return np.random.randint(0, self.buffer_size, n)
@@ -116,6 +119,7 @@ class ReplayMemory(object):
   def batch(self, batch_size=None):
     self.stats['>batch'] += 1
     idxs = self.random_indexes(batch_size)
+    # TODO: add tensor.reverse for x flipping when processing 50% time
     return Batch(np.copy(self.state[self.state_1_idx[idxs]]),
                  np.copy(self.action[idxs]),
                  np.copy(self.reward[idxs]),

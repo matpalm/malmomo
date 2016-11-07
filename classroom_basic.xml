@@ -41,7 +41,7 @@
           <hintLikelihood>1</hintLikelihood>
         </specification>
       </ClassroomDecorator>
-      <ServerQuitFromTimeUp timeLimitMs="2000" description="out_of_time"/>
+      <ServerQuitFromTimeUp timeLimitMs="__EPISODE_TIME_MS__" description="out_of_time"/>
       <ServerQuitWhenAnyAgentFinishes />
     </ServerHandlers>
   </ServerSection>
@@ -62,9 +62,9 @@
           <command>attack</command>
         </ModifierList>
       </ContinuousMovementCommands>
-      <RewardForMissionEnd rewardForDeath="-10000">
-        <Reward description="found_goal" reward="1000" />
-        <Reward description="out_of_time" reward="-1000" />
+      <RewardForMissionEnd rewardForDeath="-10">
+        <Reward description="found_goal" reward="10" />
+        <Reward description="out_of_time" reward="0" />
       </RewardForMissionEnd>
       <AgentQuitFromTouchingBlockType>
         <Block type="gold_block diamond_block redstone_block" description="found_goal" />

@@ -4,34 +4,42 @@ import argparse
 import itertools
 import json
 import MalmoPython
+import models
 import numpy as np
 import os
 from PIL import Image
 import sys
 import time
-import util as u
+import util
 
 np.set_printoptions(precision=5, threshold=10000, suppress=True, linewidth=10000)
 
+# TODO: no problem with slim import now so push all opts into module where used
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--run', type=int, default=None, help="output data to runs/N")
 parser.add_argument('--width', type=int, default=160, help="render width")
 parser.add_argument('--height', type=int, default=120, help="render height")
-opts = parser.parse_args()
+parser.add_argument('--episode-time-ms', type=int, default=10000,
+                    help="episode timeout (ms)")
+parser.add_argument('--agent', type=str, default="Naf", help="{Naf,Random}")
 
-#output_dir = "runs/%d/" % opts.run
+agents.add_opts(parser)
+models.add_opts(parser)
+util.add_opts(parser)
+opts = parser.parse_args()
 
 # set up out malmo client
 malmo = MalmoPython.AgentHost()
 spec = open("classroom_basic.xml").read()
 spec = spec.replace("__WIDTH__", str(opts.width))
 spec = spec.replace("__HEIGHT__", str(opts.height))
+spec = spec.replace("__EPISODE_TIME_MS__", str(opts.episode_time_ms))
 mission = MalmoPython.MissionSpec(spec, True)
 mission_record = MalmoPython.MissionRecordSpec()
 
-# init out rl_agent
-#agent = agents.RandomAgent()
-agent = agents.NafAgent(opts)
+# init our rl_agent
+agent_cstr = eval("agents.%sAgent" % opts.agent)
+agent = agent_cstr(opts)
 
 for episode in itertools.count(1):
   print "EPISODE", episode
@@ -63,7 +71,7 @@ for episode in itertools.count(1):
 #    img.save("%s/img_%06d.png" % (episode_dir, step))
 
     # decide action given state and send to malmo
-    turn, move = agent.action_given_state(img)
+    turn, move = agent.action_given(img)
     print "ACTION %s" % json.dumps({"episode": episode, "step": step,
                                     "turn": turn, "move": move})
     malmo.sendCommand("turn %f" % turn)
@@ -78,7 +86,7 @@ for episode in itertools.count(1):
     time.sleep(0.1)
     world_state = malmo.getWorldState()
 
-  # we only get final reward at very end, so clobber last state with
+  # we only get final reward at very end so clobber last state with
   # this reward
   episode_reward = world_state.rewards[0].getValue()
   last_state, last_action, _last_reward = state_action_rewards[-1]
@@ -87,7 +95,7 @@ for episode in itertools.count(1):
 
   # end of episode
   agent.train(state_action_rewards)
-  print agent.replay_memory.stats
+  print "agent stats", agent.stats()
 
-print "done"
+
   
