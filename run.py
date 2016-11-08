@@ -42,29 +42,35 @@ agent_cstr = eval("agents.%sAgent" % opts.agent)
 agent = agent_cstr(opts)
 
 for episode_idx in itertools.count(1):
-  print "EPISODE", episode_idx, util.dts()
+  print >>sys.stderr, "EPISODE", episode_idx, util.dts()
 #  episode_dir = "%s/e_%06d/" % (output_dir, episode)
 #  u.make_dir(episode_dir)
 
   # start new mission; explicitly wait for first observation 
   # (not just world_state.has_mission_begun)
+  mission_start = time.time()
   while True:
     try:
       malmo.startMission(mission, mission_record)
       break
     except RuntimeError as r:
-      print >>sys.stderr, "failed to start mission", r, episode_idx
+      print >>sys.stderr, "failed to start mission", r
       time.sleep(1)
   world_state = malmo.getWorldState()
   while len(world_state.observations) == 0:
-    print >>sys.stderr, "started, but no obs?", episode_idx
+    print >>sys.stderr, "started, but no obs?"
     time.sleep(0.1)
     world_state = malmo.getWorldState()
+  print "START_TIME", time.time()-mission_start
 
   # run until the mission has ended
   episode = []
   while world_state.is_mission_running:
     # extract render and convert to numpy array (w, h, 3) with values scaled 0.0 -> 1.0
+    if len(world_state.video_frames) == 0:
+      print >>sys.stderr, "no vid frames? at step", len(episode)
+      time.sleep(0.1)
+      continue
     render = world_state.video_frames[0]
     img = Image.frombytes('RGB', (render.width, render.height), str(render.pixels))
     img = np.array(img, dtype=np.float16) / 255
