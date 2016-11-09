@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import gzip
 import matplotlib.pyplot as plt
 import model_pb2
@@ -14,16 +13,9 @@ class EventLog(object):
     self.log_file = open(path, "ab")
     self.episode_entry = None
 
-  def add_episode(self, episode_sar):
-    episode = model_pb2.Episode()
-    for state, action, reward in episode_sar:
-      event = episode.event.add()
-      event.render.width = state.shape[1]
-      event.render.height = state.shape[0]
-      event.render.bytes = util.rgb_to_png(state)
-      event.render.is_png_encoded = True
-      event.action.value.extend(action)
-      event.reward = reward
+  def add_episode(self, episode):
+    for event in episode.event:
+      util.ensure_render_is_png_encoded(event.render)
     buff = episode.SerializeToString()
     buff_len = struct.pack('=l', len(buff))
     self.log_file.write(buff_len)
@@ -83,7 +75,7 @@ if __name__ == "__main__":
       dir = "%s/ep_%05d" % (opts.img_output_dir, episode_id)
       util.make_dir(dir)
       for event_id, event in enumerate(episode.event):
-        assert event.render.is_png_encoded, "TODO: support for np arrays"
+        assert event.render.is_png_encoded, "only expect serialised pngs"
         img = Image.open(StringIO.StringIO(event.render.bytes))
 #        img = img.resize((200, 200))
         filename = "%s/e%04d.png" % (dir, event_id)

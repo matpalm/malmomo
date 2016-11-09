@@ -55,17 +55,30 @@ def shape_and_product_of(t):
       pass
   return "%s #%s" % (t.get_shape(), shape_product)
 
-def rgb_to_png(rgb):
-  """convert RGB data from render to png"""
+def _unpack_rgb_bytes(render):
+  assert not render.is_png_encoded
+  flat_rgb = np.fromstring(render.bytes, dtype=np.float16)
+  rgb = flat_rgb.reshape((render.height, render.width, 3))
+  return rgb
+
+def rgb_to_png_bytes(rgb):
   sio = StringIO.StringIO()
   plt.imsave(sio, rgb)
   return sio.getvalue()
 
-def png_to_rgb(png_bytes):
-  """convert png (from rgb_to_png) to RGB"""
-  # note PNG is always RGBA so we need to slice off A
-  rgba = plt.imread(StringIO.StringIO(png_bytes))
-  return rgba[:,:,:3]
+def ensure_render_is_png_encoded(render):
+  if render.is_png_encoded: return
+  rgb = _unpack_rgb_bytes(render)
+  render.bytes = rgb_to_png_bytes(rgb)
+  render.is_png_encoded = True
+
+def rgb_from_render(render):
+  if render.is_png_encoded:
+    # note PNG is always RGBA so we need to slice off A
+    rgba = plt.imread(StringIO.StringIO(render.bytes))
+    return rgba[:,:,:3]
+  else:
+    return _unpack_rgb_bytes(render)
 
 
 class OrnsteinUhlenbeckNoise(object):

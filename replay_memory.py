@@ -1,27 +1,40 @@
 import collections
+import event_log
 import numpy as np
+import time
+import util
 
 Batch = collections.namedtuple("Batch", "state_1 action reward terminal_mask state_2")
 
+def add_opts(parser):
+  parser.add_argument('--replay-memory-size', type=int, default=10000,
+                      help="max size of replay memory")
+  parser.add_argument('--replay-memory-burn-in', type=int, default=100,
+                      help="dont train from replay memory until it reaches this size")
+  parser.add_argument('--smooth-reward-factor', type=float, default=0.9,
+                      help="if set use this value to smooth rewards")
+
 class ReplayMemory(object):
-  def __init__(self, buffer_size, state_shape, action_dim, load_factor=1.5):
-    self.buffer_size = buffer_size
+  def __init__(self, opts, state_shape, action_dim, load_factor=1.5):
+    self.buffer_size = opts.replay_memory_size
+    self.burn_in = opts.replay_memory_burn_in
     self.state_shape = state_shape
+    self.smooth_reward_factor = opts.smooth_reward_factor
     self.insert = 0
     self.full = False
 
     # the elements of the replay memory. each event represents a row in the following
     # five matrices. state_[12]_idx index into states list
-    self.state_1_idx = np.empty(buffer_size, dtype=np.int32)
-    self.action = np.empty((buffer_size, action_dim), dtype=np.float32)
-    self.reward = np.empty((buffer_size, 1), dtype=np.float32)
-    self.terminal_mask = np.empty((buffer_size, 1), dtype=np.float32)
-    self.state_2_idx = np.empty(buffer_size, dtype=np.int32)
+    self.state_1_idx = np.empty(self.buffer_size, dtype=np.int32)
+    self.action = np.empty((self.buffer_size, action_dim), dtype=np.float32)
+    self.reward = np.empty((self.buffer_size, 1), dtype=np.float32)
+    self.terminal_mask = np.empty((self.buffer_size, 1), dtype=np.float32)
+    self.state_2_idx = np.empty(self.buffer_size, dtype=np.int32)
 
     # states themselves, since they can either be state_1 or state_2 in an event
     # are stored in a separate matrix. it is sized fractionally larger than the replay
     # memory since a rollout of length n contains n+1 states.
-    self.state_buffer_size = int(buffer_size * load_factor)
+    self.state_buffer_size = int(self.buffer_size * load_factor)
     shape = [self.state_buffer_size] + list(state_shape)
     self.state = np.empty(shape, dtype=np.float16)
 
@@ -38,36 +51,57 @@ class ReplayMemory(object):
     # some stats
     self.stats = collections.Counter()
 
-  def reset_from_event_log(self, log_file):
-    raise Exception("TODO")
+  def reset_from_event_log(self, log_file, max_to_restore):
+    elr = event_log.EventLogReader(log_file)
+    num_episodes = 0
+    num_events = 0
+    start = time.time()
+    for n, episode in enumerate(elr.entries()):
+      if n%100 == 0: print "reset_from_event_log restoring", n, self.stats
+      if max_to_restore is not None and self.size() > max_to_restore: break
+      num_episodes += 1
+      num_events += len(episode.event)
+      self.add_episode(episode)
+      if self.full: break
+    print "reset_from_event_log took", time.time()-start, "sec"\
+          " num_episodes", num_episodes, "num_events", num_events
 
-  def add_episode(self, state_action_rewards):
+  def add_episode(self, episode):
+    # potentially smooth rewards. this only currently works for the case of
+    # only having a non-zero reward as last element..
+    if self.smooth_reward_factor > 0:
+      smoothed = []
+      r = episode.event[-1].reward
+      n = len(episode.event)-1
+      while n >= 0:
+        episode.event[n].reward = r
+        r = 0 if r < 0.1 else r * 0.75
+        n -= 1
+
     self.stats['>add_episode'] += 1
-    assert len(state_action_rewards) > 0
-
-    for n, (state, action, reward) in enumerate(state_action_rewards):
-      # for first element need to explicitly store state
+    for n, event in enumerate(episode.event):
       if n == 0:
+        # for first event need to explicitly store state
         state_1_idx = self.state_free_slots.pop(0)
-        self.state[state_1_idx] = state
-      # in all but not last element we need to peek for next state
-      if n != len(state_action_rewards)-1:
+        self.state[state_1_idx] = util.rgb_from_render(event.render)
+      if n != len(episode.event)-1:
+        # in all but last event we need to peek for next state
         terminal = False
         state_2_idx = self.state_free_slots.pop(0)
-        self.state[state_2_idx] = state_action_rewards[n+1][0]
+        self.state[state_2_idx] = util.rgb_from_render(episode.event[n+1].render)
       else:
-        # store special zero state for null state_2 (see init for more info)
+        # for last event store zero state for null state_2 (see init for more info)
         terminal = True
         state_2_idx = self.zero_state_idx
       # add element to replay memory
-      self._add(state_1_idx, action, reward, terminal, state_2_idx)
+      self._add(state_1_idx, event.action.value, event.reward, terminal, state_2_idx)
       # roll state_2_idx to become state_1_idx for next step
       state_1_idx = state_2_idx
 
     self.stats['free_slots'] = len(self.state_free_slots)
 
   def _add(self, s1_idx, a, r, t, s2_idx):
-    print ">add s1_idx=%s, a=%s, r=%s, t=%s s2_idx=%s" % (s1_idx, a, r, t, s2_idx)
+#    print ">add s1_idx=%s, a=%s, r=%s, t=%s s2_idx=%s" % (s1_idx, a, r, t, s2_idx)
 
     self.stats['>add'] += 1
     assert s1_idx >= 0, s1_idx
@@ -79,16 +113,6 @@ class ReplayMemory(object):
       # we always free the state_1 slot we are about to clobber...
       self.state_free_slots.append(self.state_1_idx[self.insert])
 #      print "full; so free slot", self.state_1_idx[self.insert]
-
-
-      # NOT ANY MORE! 
-      # and we free the state_2 slot also if the slot is a terminal event
-      # (since that implies no other event uses this state_2 as a state_1)
-#      self.stats['cache_evicted_s1'] += 1
-#      if self.terminal_mask[self.insert] == 0:
-#        self.state_free_slots.append(self.state_2_idx[self.insert])
-#        print "also, since terminal, free", self.state_2_idx[self.insert]
-#        self.stats['cache_evicted_s2'] += 1
 
     # add s1, a, r, s2
     self.state_1_idx[self.insert] = s1_idx
@@ -108,6 +132,9 @@ class ReplayMemory(object):
   def size(self):
     return self.buffer_size if self.full else self.insert
 
+  def burnt_in(self):
+    return self.size() > self.burn_in
+
   def random_indexes(self, n=1):
     if self.full:
       return np.random.randint(0, self.buffer_size, n)
@@ -126,6 +153,16 @@ class ReplayMemory(object):
                  np.copy(self.terminal_mask[idxs]),
                  np.copy(self.state[self.state_2_idx[idxs]]))
 
-
+  def dump_replay_memory_images_to_disk(self, directory):
+    print ">dump_replay_memory_images_to_disk", directory
+    util.make_dir(directory)
+    for idx in range(self.state_buffer_size):
+      if idx == 0:
+        pass  # dummy zero state
+      elif idx in self.state_free_slots:
+        print "idx", idx, "in free slots; ignore"
+      else:
+        with open("%s/%05d.png" % (directory, idx), "wb") as f:
+          f.write(util.rgb_to_png_bytes(self.state[idx]))
 
 

@@ -197,6 +197,10 @@ class NafNetwork(base_network.Network):
     return map(float, np.squeeze(actions))
 
   def train(self, batch):
+    if VERBOSE_DEBUG:
+      print "batch.action", batch.action.T
+      print "batch.reward", batch.reward.T
+      print "batch.terminal_mask", batch.terminal_mask.T
     _, _, l = tf.get_default_session().run([self.check_numerics, self.train_op, self.loss],
                                  feed_dict={self.input_state: batch.state_1,
                                             self.input_action: batch.action,
@@ -204,7 +208,7 @@ class NafNetwork(base_network.Network):
                                             self.terminal_mask: batch.terminal_mask,
                                             self.input_state_2: batch.state_2,
                                             base_network.IS_TRAINING: True})
-    print "loss", l
+    print "loss\t%s" % l
     return l
 
   def debug_values(self, batch):

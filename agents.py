@@ -10,12 +10,12 @@ import util
 
 def add_opts(parser):
   parser.add_argument('--batch-size', type=int, default=128, help="training batch size")
-#  parser.add_argument('--batches-per-step', type=int, default=5,
-#                      help="number of batches to train per step")
-  parser.add_argument('--replay-memory-size', type=int, default=10000,
-                      help="max size of replay memory")
-  parser.add_argument('--replay-memory-burn-in', type=int, default=100,
-                      help="dont train from replay memory until it reaches this size")
+  parser.add_argument('--batches-per-step', type=int, default=5,
+                      help="number of batches to train per step")
+  parser.add_argument('--event-log-in', type=str, default=None,
+                      help="if set replay this event file into replay memory")
+  parser.add_argument('--event-log-in-num', type=int, default=None,
+                      help="if set only read this many events from event-log-in")
   parser.add_argument('--event-log-out', type=str, default=None,
                       help="if set agent also write all episodes to this file")
 
@@ -24,7 +24,9 @@ class RandomAgent(object):
   def __init__(self, opts):
     self.stats_ = Counter()
     if opts.event_log_out:
-      self.event_log = event_log.EventLog(opts.event_log_out)    
+      self.event_log = event_log.EventLog(opts.event_log_out)
+    else:
+      self.event_log = None
 
   def action_given(self, state):
     turn = (np.random.random()*2)-1    # (-1,1) for turn
@@ -33,7 +35,7 @@ class RandomAgent(object):
 
   def add_episode(self, episode):
     self.stats_['runs'] += 1
-    if episode[-1][2] != 0:
+    if episode.event[-1].reward != 0:
       self.stats_['was_successful'] += 1
     if self.event_log:
       self.event_log.add_episode(episode)
@@ -53,10 +55,12 @@ class NafAgent(object):
     self.sess = tf.Session(config=config)
 
     render_shape = (opts.height, opts.width, 3)
-    self.replay_memory = replay_memory.ReplayMemory(buffer_size=opts.replay_memory_size, 
+    self.replay_memory = replay_memory.ReplayMemory(opts=opts,
                                                     state_shape=render_shape,
                                                     action_dim=2,
                                                     load_factor=1.2)
+    if opts.event_log_in:
+      self.replay_memory.reset_from_event_log(opts.event_log_in, opts.event_log_in_num)
 
     # s1 and s2 placeholders
     batched_state_shape = [None] + list(render_shape)
@@ -82,23 +86,27 @@ class NafAgent(object):
       self.target_value_net.set_as_target_network_for(self.value_net, 0.01)
 
   def action_given(self, state):
+    # TODO: include noise, for now just doing eval on data trained fully off policy
     with self.sess.as_default():
-      return self.network.action_given(state, add_noise=True)
+      return self.network.action_given(state, add_noise=False)
 
   def add_episode(self, episode):
+    # add to replay memory
     start = time.time()
     self.replay_memory.add_episode(episode)
-    print "replay_memory.add_episode", time.time()-start
+    print "replay_memory.add_episode\t%s" % (time.time()-start)
 
-    if self.replay_memory.size() > self.opts.replay_memory_burn_in:
+    # do some number of training steps
+    if self.replay_memory.burnt_in():
       with self.sess.as_default():
-        start = time.time()
-        batch = self.replay_memory.batch(self.opts.batch_size)
-        print "fetch batch", time.time()-start
-        start = time.time()
-        self.network.train(batch)
-        print "train", time.time()-start
-        self.network.target_value_net.update_weights()
+        for _ in xrange(self.opts.batches_per_step):
+          start = time.time()
+          batch = self.replay_memory.batch(self.opts.batch_size)
+          print "fetch batch\t%s" % (time.time()-start)
+          start = time.time()
+          self.network.train(batch)
+          print "train\t%s" % (time.time()-start)
+          self.network.target_value_net.update_weights()
 
   def stats(self):
     return self.replay_memory.stats

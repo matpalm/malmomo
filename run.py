@@ -5,9 +5,11 @@ import itertools
 import json
 import MalmoPython
 import models
+import model_pb2
 import numpy as np
 import os
 from PIL import Image
+import replay_memory
 import sys
 import time
 import util
@@ -26,6 +28,7 @@ parser.add_argument('--agent', type=str, default="Naf", help="{Naf,Random}")
 agents.add_opts(parser)
 models.add_opts(parser)
 util.add_opts(parser)
+replay_memory.add_opts(parser)
 opts = parser.parse_args()
 
 # set up out malmo client
@@ -64,42 +67,49 @@ for episode_idx in itertools.count(1):
   print "START_TIME", time.time()-mission_start
 
   # run until the mission has ended
-  episode = []
+  episode = model_pb2.Episode()
   while world_state.is_mission_running:
     # extract render and convert to numpy array (w, h, 3) with values scaled 0.0 -> 1.0
     if len(world_state.video_frames) == 0:
-      print >>sys.stderr, "no vid frames? at step", len(episode)
+      print >>sys.stderr, "no vid frames? at step", len(episode.event)
       time.sleep(0.1)
       continue
-    render = world_state.video_frames[0]
-    img = Image.frombytes('RGB', (render.width, render.height), str(render.pixels))
+
+    event = episode.event.add()
+
+    frame = world_state.video_frames[0]
+    # TODO: should be able to do this conversion directly, i.e. not via Image
+    img = Image.frombytes('RGB', (frame.width, frame.height), str(frame.pixels))
     img = np.array(img, dtype=np.float16) / 255
+    event.render.width = frame.width
+    event.render.height = frame.height
+    event.render.bytes = img.tostring()
+    event.render.is_png_encoded = False
 
     # decide action given state and send to malmo
+    # TODO: change to take model_pb2.Render directly and return model_pb2.Action
     turn, move = agent.action_given(img)
-    print "ACTION %s" % json.dumps({"episode": episode_idx, "step": len(episode),
+    print "ACTION\t%s" % json.dumps({"episode": episode_idx, "step": len(episode.event),
                                     "turn": turn, "move": move})
     malmo.sendCommand("turn %f" % turn)
     malmo.sendCommand("move %f" % move)
+    event.action.value.extend([turn, move])
 
-    # reward state, action & reward
     # note: for now reward is always zero, except for the end...
-    episode.append((img, (turn, move), 0))
+    event.reward = 0.0
 
     # wait for a bit
     time.sleep(0.1)
     world_state = malmo.getWorldState()
 
-  # we only get final reward at very end so clobber last state with
-  # this reward
+  # we only get final reward at very end so clobber last state with this reward
   episode_reward = world_state.rewards[0].getValue()
-  last_state, last_action, _last_reward = episode[-1]
-  episode[-1] = (last_state, last_action, episode_reward)
-  print "REWARD %s" % json.dumps({"reward": episode_reward})
+  episode.event[-1].reward = episode_reward
+  print "REWARD\t%s\t%s" % (episode_reward, len(episode.event))
 
   # end of episode
   agent.add_episode(episode)
-  print "agent stats", agent.stats()
+  print "agent stats\t", agent.stats()
 
 
   
