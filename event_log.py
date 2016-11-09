@@ -49,6 +49,8 @@ if __name__ == "__main__":
   parser.add_argument('--echo', action='store_true', help="write event to stdout")
   parser.add_argument('--episodes', type=str, default=None,
                       help="if set only process these specific episodes (comma separated list)")
+  parser.add_argument('--nth', type=int, default=None,
+                      help="if set emit every nth episode")
   parser.add_argument('--img-output-dir', type=str, default=None,
                       help="if set output all renders to this DIR/e_NUM/s_NUM.png")
   opts = parser.parse_args()
@@ -64,6 +66,8 @@ if __name__ == "__main__":
 
   elr = EventLogReader(opts.file)
   for episode_id, episode in enumerate(elr.entries()):
+    if opts.nth is not None and episode_id % opts.nth != 0:
+      continue
     if episode_whitelist is not None and episode_id not in episode_whitelist:
       continue
     if opts.echo:
@@ -74,6 +78,7 @@ if __name__ == "__main__":
     if opts.img_output_dir is not None:
       dir = "%s/ep_%05d" % (opts.img_output_dir, episode_id)
       util.make_dir(dir)
+      print "writing to", dir
       for event_id, event in enumerate(episode.event):
         assert event.render.is_png_encoded, "only expect serialised pngs"
         img = Image.open(StringIO.StringIO(event.render.bytes))

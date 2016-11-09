@@ -16,17 +16,13 @@ def add_opts(parser):
                       help="if set replay this event file into replay memory")
   parser.add_argument('--event-log-in-num', type=int, default=None,
                       help="if set only read this many events from event-log-in")
-  parser.add_argument('--event-log-out', type=str, default=None,
-                      help="if set agent also write all episodes to this file")
+  parser.add_argument('--dont-store-new-memories', action='store_true',
+                      help="if set do not store new memories.")
 
 
 class RandomAgent(object):
   def __init__(self, opts):
     self.stats_ = Counter()
-    if opts.event_log_out:
-      self.event_log = event_log.EventLog(opts.event_log_out)
-    else:
-      self.event_log = None
 
   def action_given(self, state):
     turn = (np.random.random()*2)-1    # (-1,1) for turn
@@ -37,8 +33,6 @@ class RandomAgent(object):
     self.stats_['runs'] += 1
     if episode.event[-1].reward != 0:
       self.stats_['was_successful'] += 1
-    if self.event_log:
-      self.event_log.add_episode(episode)
 
   def stats(self):
     return self.stats_
@@ -93,8 +87,9 @@ class NafAgent(object):
   def add_episode(self, episode):
     # add to replay memory
     start = time.time()
-    self.replay_memory.add_episode(episode)
-    print "replay_memory.add_episode\t%s" % (time.time()-start)
+    if not self.opts.dont_store_new_memories:
+      self.replay_memory.add_episode(episode)
+      print "replay_memory.add_episode\t%s" % (time.time()-start)
 
     # do some number of training steps
     if self.replay_memory.burnt_in():

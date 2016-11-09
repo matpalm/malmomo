@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import agents
 import argparse
+import event_log
 import itertools
 import json
 import MalmoPython
@@ -24,12 +25,15 @@ parser.add_argument('--height', type=int, default=120, help="render height")
 parser.add_argument('--episode-time-ms', type=int, default=10000,
                     help="episode timeout (ms)")
 parser.add_argument('--agent', type=str, default="Naf", help="{Naf,Random}")
+parser.add_argument('--event-log-out', type=str, default=None,
+                    help="if set agent also write all episodes to this file")
 
 agents.add_opts(parser)
 models.add_opts(parser)
 util.add_opts(parser)
 replay_memory.add_opts(parser)
 opts = parser.parse_args()
+print >>sys.stderr, "OPTS", opts
 
 # set up out malmo client
 malmo = MalmoPython.AgentHost()
@@ -43,6 +47,8 @@ mission_record = MalmoPython.MissionRecordSpec()
 # init our rl_agent
 agent_cstr = eval("agents.%sAgent" % opts.agent)
 agent = agent_cstr(opts)
+
+event_log = event_log.EventLog(opts.event_log_out) if opts.event_log_out else None
 
 for episode_idx in itertools.count(1):
   print >>sys.stderr, "EPISODE", episode_idx, util.dts()
@@ -109,6 +115,8 @@ for episode_idx in itertools.count(1):
 
   # end of episode
   agent.add_episode(episode)
+  if event_log:
+    event_log.add_episode(episode)
   print "agent stats\t", agent.stats()
 
 
