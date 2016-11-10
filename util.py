@@ -21,6 +21,10 @@ def add_opts(parser):
 def dts():
   return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
+def l2_norm(tensor):
+  """(row wise) l2 norm of a tensor"""
+  return tf.sqrt(tf.reduce_sum(tf.pow(tensor, 2)))
+
 def clip_and_debug_gradients(gradients, opts):
   # extract just the gradients temporarily for global clipping and then rezip
   if opts.gradient_clip is not None:

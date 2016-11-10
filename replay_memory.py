@@ -1,6 +1,7 @@
 import collections
 import event_log
 import numpy as np
+import sys
 import time
 import util
 
@@ -65,6 +66,7 @@ class ReplayMemory(object):
       if self.full: break
     print "reset_from_event_log took", time.time()-start, "sec"\
           " num_episodes", num_episodes, "num_events", num_events
+    sys.stdout.flush()
 
   def add_episode(self, episode):
     # potentially smooth rewards. this only currently works for the case of

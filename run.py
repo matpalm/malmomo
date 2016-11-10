@@ -118,6 +118,6 @@ for episode_idx in itertools.count(1):
   if event_log:
     event_log.add_episode(episode)
   print "agent stats\t", agent.stats()
-
+  sys.stdout.flush()
 
   

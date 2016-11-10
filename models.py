@@ -198,27 +198,31 @@ class NafNetwork(base_network.Network):
 
   def train(self, batch):
     if VERBOSE_DEBUG:
-      print "batch.action", batch.action.T
+      print "batch.action"
+      print batch.action.T
       print "batch.reward", batch.reward.T
       print "batch.terminal_mask", batch.terminal_mask.T
+      values = tf.get_default_session().run([self._l_values, self.value_net.value, self.advantage,
+                                             self.target_value_net.value, ],
+                                            feed_dict={self.input_state: batch.state_1,
+                                                       self.input_action: batch.action,
+                                                       self.reward: batch.reward,
+                                                       self.terminal_mask: batch.terminal_mask,
+                                                       self.input_state_2: batch.state_2,
+                                                       base_network.IS_TRAINING: True})
+      values = [np.squeeze(v) for v in values]
+#      print "_l_values"
+#      print values[0].T
+      print "value_net.value        ", values[1].T
+      print "advantage              ", values[2].T
+      print "target_value_net.value ", values[3].T
+
     _, _, l = tf.get_default_session().run([self.check_numerics, self.train_op, self.loss],
-                                 feed_dict={self.input_state: batch.state_1,
-                                            self.input_action: batch.action,
-                                            self.reward: batch.reward,
-                                            self.terminal_mask: batch.terminal_mask,
-                                            self.input_state_2: batch.state_2,
-                                            base_network.IS_TRAINING: True})
+                                           feed_dict={self.input_state: batch.state_1,
+                                                      self.input_action: batch.action,
+                                                      self.reward: batch.reward,
+                                                      self.terminal_mask: batch.terminal_mask,
+                                                      self.input_state_2: batch.state_2,
+                                                      base_network.IS_TRAINING: True})
     print "loss\t%s" % l
     return l
-
-  def debug_values(self, batch):
-    values = tf.get_default_session().run([self._l_values, self.loss, self.value_net.value,
-                                           self.advantage, self.target_value_net.value],
-                                   feed_dict={self.input_state: batch.state_1,
-                                              self.input_action: batch.action,
-                                              self.reward: batch.reward,
-                                              self.terminal_mask: batch.terminal_mask,
-                                              self.input_state_2: batch.state_2,
-                                              base_network.IS_TRAINING: False})
-    values = [np.squeeze(v) for v in values]
-    return values
