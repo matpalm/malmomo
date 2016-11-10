@@ -49,7 +49,10 @@ cd <MALMO>/Minecraft/launchClient.sh
 --batches-per-step=100 
 
 # drop the --dont-store-new-memories to have it add to training, though noise is currently disabled (wip)
+
 ```
+
+to enable / disable verbose debugging issue a `kill -sigusr1` to running process.
 
 # install stuff
 

@@ -72,13 +72,15 @@ class ReplayMemory(object):
     # potentially smooth rewards. this only currently works for the case of
     # only having a non-zero reward as last element..
     if self.smooth_reward_factor > 0:
-      smoothed = []
       r = episode.event[-1].reward
+      if r == 0: r = -10  # for only episode data where out of time was 0
+      decay = 0.75 if r > 0 else 0.5
       n = len(episode.event)-1
       while n >= 0:
         episode.event[n].reward = r
-        r = 0 if r < 0.1 else r * 0.75
+        r = 0 if abs(r) < 0.1 else r * decay
         n -= 1
+      #print "ADD_REWARD_SMOOTHED\t%s" % [e.reward for e in episode.event]        
 
     self.stats['>add_episode'] += 1
     for n, event in enumerate(episode.event):

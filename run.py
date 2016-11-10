@@ -27,6 +27,8 @@ parser.add_argument('--episode-time-ms', type=int, default=10000,
 parser.add_argument('--agent', type=str, default="Naf", help="{Naf,Random}")
 parser.add_argument('--event-log-out', type=str, default=None,
                     help="if set agent also write all episodes to this file")
+parser.add_argument('--eval-freq', type=int, default=10,
+                    help="do an eval (i.e. no noise) rollout every nth episodes")
 
 agents.add_opts(parser)
 models.add_opts(parser)
@@ -51,9 +53,8 @@ agent = agent_cstr(opts)
 event_log = event_log.EventLog(opts.event_log_out) if opts.event_log_out else None
 
 for episode_idx in itertools.count(1):
-  print >>sys.stderr, "EPISODE", episode_idx, util.dts()
-#  episode_dir = "%s/e_%06d/" % (output_dir, episode)
-#  u.make_dir(episode_dir)
+  eval_episode = (episode_idx % opts.eval_freq == 0)
+  print >>sys.stderr, "EPISODE", episode_idx, util.dts(), "eval =", eval_episode
 
   # start new mission; explicitly wait for first observation 
   # (not just world_state.has_mission_begun)
@@ -94,9 +95,9 @@ for episode_idx in itertools.count(1):
 
     # decide action given state and send to malmo
     # TODO: change to take model_pb2.Render directly and return model_pb2.Action
-    turn, move = agent.action_given(img)
+    turn, move = agent.action_given(img, is_eval=eval_episode)
     print "ACTION\t%s" % json.dumps({"episode": episode_idx, "step": len(episode.event),
-                                    "turn": turn, "move": move})
+                                     "turn": turn, "move": move, "eval": eval_episode})
     malmo.sendCommand("turn %f" % turn)
     malmo.sendCommand("move %f" % move)
     event.action.value.extend([turn, move])
@@ -111,7 +112,7 @@ for episode_idx in itertools.count(1):
   # we only get final reward at very end so clobber last state with this reward
   episode_reward = world_state.rewards[0].getValue()
   episode.event[-1].reward = episode_reward
-  print "REWARD\t%s\t%s" % (episode_reward, len(episode.event))
+  print "REWARD\t%s\t%s\t%s" % (episode_reward, len(episode.event), eval_episode)
 
   # end of episode
   agent.add_episode(episode)

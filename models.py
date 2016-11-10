@@ -15,7 +15,7 @@ def add_opts(parser):
   parser.add_argument('--action-noise-theta', type=float, default=0.01,
                       help="OrnsteinUhlenbeckNoise theta (rate of change) param for action"
                            " exploration")
-  parser.add_argument('--action-noise-sigma', type=float, default=0.05,
+  parser.add_argument('--action-noise-sigma', type=float, default=0.01,
                       help="OrnsteinUhlenbeckNoise sigma (magnitude) param for action"
                            " exploration")
 
@@ -87,7 +87,7 @@ class NafNetwork(base_network.Network):
         else:
           conv_net_output = self.conv_net_on(input_state, opts)
         hidden_layers = self.hidden_layers_on(conv_net_output, [100, 50])
-        weights_initializer = tf.random_uniform_initializer(-0.001, 0.001)
+        weights_initializer = tf.random_uniform_initializer(-0.1, 0.1)
         self.output_action = slim.fully_connected(scope='fc',
                                                   inputs=hidden_layers,
                                                   num_outputs=action_dim,
@@ -186,7 +186,6 @@ class NafNetwork(base_network.Network):
     actions = tf.get_default_session().run(self.output_action,
                                            feed_dict={self.input_state: [state],
                                                       base_network.IS_TRAINING: False})
-
     if add_noise:
       if VERBOSE_DEBUG:
         pre_noise = str(actions)

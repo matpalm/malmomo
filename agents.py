@@ -24,7 +24,7 @@ class RandomAgent(object):
   def __init__(self, opts):
     self.stats_ = Counter()
 
-  def action_given(self, state):
+  def action_given(self, state, is_eval):
     turn = (np.random.random()*2)-1    # (-1,1) for turn
     move = (np.random.random()*2)-0.5  # (-0.5,1.5) for move, i.e. favor moving forward
     return turn, move
@@ -79,10 +79,9 @@ class NafAgent(object):
       # TODO: opt for update rate
       self.target_value_net.set_as_target_network_for(self.value_net, 0.01)
 
-  def action_given(self, state):
-    # TODO: include noise, for now just doing eval on data trained fully off policy
+  def action_given(self, state, is_eval):
     with self.sess.as_default():
-      return self.network.action_given(state, add_noise=False)
+      return self.network.action_given(state, add_noise=(not is_eval))
 
   def add_episode(self, episode):
     # add to replay memory

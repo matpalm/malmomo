@@ -64,7 +64,7 @@
       </ContinuousMovementCommands>
       <RewardForMissionEnd rewardForDeath="-10">
         <Reward description="found_goal" reward="10" />
-        <Reward description="out_of_time" reward="0" />
+        <Reward description="out_of_time" reward="-10" />
       </RewardForMissionEnd>
       <AgentQuitFromTouchingBlockType>
         <Block type="gold_block diamond_block redstone_block" description="found_goal" />
