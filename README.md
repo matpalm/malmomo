@@ -4,16 +4,16 @@ malmomo is the third in a series of deep rl projects.
 
 ![eg_rollout](eg_rollout.gif)
 
-the first was [drivebot](http://matpalm.com/blog/drivebot/) which trains a [DQN](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf)
-to do discrete control of a simulated rover. it include work on using [domain adversarial nets](https://arxiv.org/abs/1505.07818)
-to make the controller robust to both simulated & real input but i never got the control side of things working properly.
+the first was [drivebot](http://matpalm.com/blog/drivebot/) which trained a [DQN](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf)
+to do discrete control of a simulated rover. it included work on using [domain adversarial nets](https://arxiv.org/abs/1505.07818)
+to make the controller robust to both simulated & real input but never had the control side of things working properly...
 
-phase 2 was [cartpole++](https://github.com/matpalm/cartpoleplusplus) where the focus was more on continuous control and raw pixel
-input. this work included training a [likelihood ratio policy gradient](http://www-anw.cs.umass.edu/~barto/courses/cs687/Policy%20Gradient-printable.pdf)
+phase 2 was [cartpole++](https://github.com/matpalm/cartpoleplusplus) where the focus was on continuous control and raw pixel
+input. this work included training a baseline [likelihood ratio policy gradient](http://www-anw.cs.umass.edu/~barto/courses/cs687/Policy%20Gradient-printable.pdf)
 method for the low dimensional problem (7d pose of cart and pole) and training [DDPG](https://arxiv.org/abs/1509.02971) &
 [NAF](https://arxiv.org/abs/1603.00748) for the high dimensional raw pixel input version.
 
-phase 3 is malmomo (i.e. mo malmo (i.e. more malmo)). it includes training NAF against a [project malmo](https://github.com/Microsoft/malmo)
+phase 3 is *malmomo* (i.e. mo malmo (i.e. more malmo)). it includes training NAF against a [project malmo](https://github.com/Microsoft/malmo)
 environment mapping raw pixels to continuous turn/move control. 
 
 # main components
@@ -24,6 +24,10 @@ environment mapping raw pixels to continuous turn/move control.
 * event_log.py : provides the ability to read / write episodes to / from disk
 
 # example usage
+
+pretty early days but...
+
+## gather some offline data and then train a naf agent 
 
 ```
 # start malmo client
@@ -43,6 +47,8 @@ cd <MALMO>/Minecraft/launchClient.sh
 --event-log-in=random.events \
 --event-log-out=naf.events --dont-store-new-memories \
 --batches-per-step=100 
+
+# drop the --dont-store-new-memories to have it add to training, though noise is currently disabled (wip)
 ```
 
 # install stuff
