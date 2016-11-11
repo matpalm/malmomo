@@ -29,6 +29,8 @@ parser.add_argument('--event-log-out', type=str, default=None,
                     help="if set agent also write all episodes to this file")
 parser.add_argument('--eval-freq', type=int, default=10,
                     help="do an eval (i.e. no noise) rollout every nth episodes")
+parser.add_argument('--mission', type=str, default="classroom_1room.xml",
+                    help="mission to run")
 
 agents.add_opts(parser)
 models.add_opts(parser)
@@ -39,7 +41,7 @@ print >>sys.stderr, "OPTS", opts
 
 # set up out malmo client
 malmo = MalmoPython.AgentHost()
-spec = open("classroom_basic.xml").read()
+spec = open(opts.mission).read()
 spec = spec.replace("__WIDTH__", str(opts.width))
 spec = spec.replace("__HEIGHT__", str(opts.height))
 spec = spec.replace("__EPISODE_TIME_MS__", str(opts.episode_time_ms))
@@ -96,23 +98,29 @@ for episode_idx in itertools.count(1):
     # decide action given state and send to malmo
     # TODO: change to take model_pb2.Render directly and return model_pb2.Action
     turn, move = agent.action_given(img, is_eval=eval_episode)
-    print "ACTION\t%s" % json.dumps({"episode": episode_idx, "step": len(episode.event),
-                                     "turn": turn, "move": move, "eval": eval_episode})
     malmo.sendCommand("turn %f" % turn)
     malmo.sendCommand("move %f" % move)
     event.action.value.extend([turn, move])
 
-    # note: for now reward is always zero, except for the end...
-    event.reward = 0.0
-
-    # wait for a bit
+    # wait for a bit and refetch state
     time.sleep(0.1)
     world_state = malmo.getWorldState()
 
-  # we only get final reward at very end so clobber last state with this reward
-  episode_reward = world_state.rewards[0].getValue()
-  episode.event[-1].reward = episode_reward
-  print "REWARD\t%s\t%s\t%s" % (episode_reward, len(episode.event), eval_episode)
+    # check for any reward
+    if world_state.rewards:
+      assert len(world_state.rewards) == 1
+      event.reward = world_state.rewards[0].getValue()
+    else:
+      event.reward = 0.0
+
+    # dump debug
+    print "ACTION\t%s" % json.dumps({"episode": episode_idx, "step": len(episode.event),
+                                     "turn": turn, "move": move, "eval": eval_episode,
+                                     "reward": event.reward})
+
+  # report final reward for episode
+  print "REWARD\t%s\t%s\t%s" % (sum([e.reward for e in episode.event]),
+                                len(episode.event), eval_episode)
 
   # end of episode
   agent.add_episode(episode)
