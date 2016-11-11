@@ -48,7 +48,7 @@ pretty early days but...
 --event-log-out=naf.events --dont-store-new-memories \
 --batches-per-step=100 
 
-# drop the --dont-store-new-memories to have it add to training, though noise is currently disabled (wip)
+# drop the --dont-store-new-memories to have it add to training
 
 ```
 
