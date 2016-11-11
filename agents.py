@@ -18,7 +18,10 @@ def add_opts(parser):
                       help="if set only read this many events from event-log-in")
   parser.add_argument('--dont-store-new-memories', action='store_true',
                       help="if set do not store new memories.")
-
+  parser.add_argument('--ckpt-dir', type=str, default=None,
+                      help="if set save ckpts to this dir")
+  parser.add_argument('--ckpt-freq', type=int, default=3600,
+                      help="freq (sec) to save ckpts")
 
 class RandomAgent(object):
   def __init__(self, opts):
@@ -72,11 +75,16 @@ class NafAgent(object):
                                      action_dim=2, opts=opts)
     
     with self.sess.as_default():
-      tf.get_default_session().run(tf.initialize_all_variables())
-      # TODO: reinclude saver_util stuff
+      # setup saver util and either load latest ckpt or init variables
+      self.saver_util = None
+      if opts.ckpt_dir is not None:
+        self.saver_util = util.SaverUtil(self.sess, opts.ckpt_dir, opts.ckpt_freq)
+      else:
+        self.sess.run(tf.initialize_all_variables())
       for v in tf.all_variables():
         print >>sys.stderr, v.name, util.shape_and_product_of(v)
-      # TODO: opt for update rate
+
+      # setup target network
       self.target_value_net.set_as_target_network_for(self.value_net, 0.01)
 
   def action_given(self, state, is_eval):
@@ -85,22 +93,20 @@ class NafAgent(object):
 
   def add_episode(self, episode):
     # add to replay memory
-    start = time.time()
     if not self.opts.dont_store_new_memories:
       self.replay_memory.add_episode(episode)
-      print "replay_memory.add_episode\t%s" % (time.time()-start)
 
     # do some number of training steps
     if self.replay_memory.burnt_in():
       with self.sess.as_default():
         for _ in xrange(self.opts.batches_per_step):
-          start = time.time()
           batch = self.replay_memory.batch(self.opts.batch_size)
-          print "fetch batch\t%s" % (time.time()-start)
           start = time.time()
           self.network.train(batch)
           print "train\t%s" % (time.time()-start)
           self.network.target_value_net.update_weights()
+      if self.saver_util is not None:
+        self.saver_util.save_if_required()
 
   def stats(self):
     return self.replay_memory.stats
