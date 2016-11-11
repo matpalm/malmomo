@@ -96,6 +96,7 @@ for episode_idx in itertools.count(1):
     if len(world_state.video_frames) == 0:
       print >>sys.stderr, "no vid frames? at step", len(episode.event)
       time.sleep(0.1)
+      world_state = malmo.getWorldState()
       continue
 
     event = episode.event.add()
