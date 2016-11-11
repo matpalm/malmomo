@@ -3,7 +3,9 @@
   <About>
     <Summary>Find the goal!</Summary>
   </About>
-
+  <ModSettings>
+    <MsPerTick>__MS_PER_TICK__</MsPerTick>
+  </ModSettings>
   <ServerSection>
       <ServerInitialConditions>
         <Time>

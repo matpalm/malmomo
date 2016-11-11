@@ -31,7 +31,7 @@ pretty early days but...
 
 ```
 # start malmo client
-cd <MALMO>/Minecraft/launchClient.sh
+<MALMO>/Minecraft/launchClient.sh
 
 # start an agent randomly gathering data
 ./run.py --agent=Random --episode-time-ms=5000 --event-log-out=random.events
@@ -50,6 +50,22 @@ cd <MALMO>/Minecraft/launchClient.sh
 
 # drop the --dont-store-new-memories to have it add to training, though noise is currently disabled (wip)
 
+```
+
+### gather data across multiple instances
+
+```
+# start N, say 3, malmo clients
+shell1> launchClient.sh -port 10000
+shell2> launchClient.sh -port 10001
+shell3> launchClient.sh -port 10002
+```
+
+```
+# start N overclocked random agents
+shell4> ./run.py --agent=Random --episode-time-ms=10000 --event-log-out=random1.events --mission=classroom_2room.xml --client-pool-size=3
+shell5> ./run.py --agent=Random --episode-time-ms=10000 --event-log-out=random2.events --mission=classroom_2room.xml --client-pool-size=3
+shell6> ./run.py --agent=Random --episode-time-ms=10000 --event-log-out=random3.events --mission=classroom_2room.xml --client-pool-size=3
 ```
 
 to enable / disable verbose debugging issue a `kill -sigusr1` to running process.

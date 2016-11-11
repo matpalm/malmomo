@@ -31,6 +31,10 @@ parser.add_argument('--eval-freq', type=int, default=10,
                     help="do an eval (i.e. no noise) rollout every nth episodes")
 parser.add_argument('--mission', type=str, default="classroom_1room.xml",
                     help="mission to run")
+parser.add_argument('--overclock', action='store_true', help="run at x2 speed (needs more testing)")
+parser.add_argument('--client-pool-size', type=int, default=1,
+                    help="number of instances of launchClient.sh running")
+
 
 agents.add_opts(parser)
 models.add_opts(parser)
@@ -39,12 +43,22 @@ replay_memory.add_opts(parser)
 opts = parser.parse_args()
 print >>sys.stderr, "OPTS", opts
 
-# set up out malmo client
+# setup client pool
+client_pool = MalmoPython.ClientPool()
+for i in range(opts.client_pool_size):
+  client_pool.add( MalmoPython.ClientInfo( "127.0.0.1", 10000+i ) )
+
+# setup agent host
 malmo = MalmoPython.AgentHost()
+# can't do this without more complex caching of world state vid frames
+#malmo.setObservationsPolicy(MalmoPython.ObservationsPolicy.LATEST_OBSERVATION_ONLY)
+
+# define mission spec
 spec = open(opts.mission).read()
 spec = spec.replace("__WIDTH__", str(opts.width))
 spec = spec.replace("__HEIGHT__", str(opts.height))
 spec = spec.replace("__EPISODE_TIME_MS__", str(opts.episode_time_ms))
+spec = spec.replace("__MS_PER_TICK__", "25" if opts.overclock else "50")
 mission = MalmoPython.MissionSpec(spec, True)
 mission_record = MalmoPython.MissionRecordSpec()
 
@@ -63,7 +77,7 @@ for episode_idx in itertools.count(1):
   mission_start = time.time()
   while True:
     try:
-      malmo.startMission(mission, mission_record)
+      malmo.startMission(mission, client_pool, mission_record, 0, "")
       break
     except RuntimeError as r:
       print >>sys.stderr, "failed to start mission", r
@@ -103,7 +117,7 @@ for episode_idx in itertools.count(1):
     event.action.value.extend([turn, move])
 
     # wait for a bit and refetch state
-    time.sleep(0.1)
+    time.sleep(0.05 if opts.overclock else 0.1)
     world_state = malmo.getWorldState()
 
     # check for any reward
