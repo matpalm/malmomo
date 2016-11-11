@@ -6,7 +6,7 @@ malmomo is the third in a series of deep rl projects.
 
 the first was [drivebot](http://matpalm.com/blog/drivebot/) which trained a [DQN](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf)
 to do discrete control of a simulated rover. it included work on using [domain adversarial nets](https://arxiv.org/abs/1505.07818)
-to make the controller robust to both simulated & real input but never had the control side of things working properly...
+to make the controller robust to both simulated & real input but never had the transfer of control from sim to real working properly...
 
 phase 2 was [cartpole++](https://github.com/matpalm/cartpoleplusplus) where the focus was on continuous control and raw pixel
 input. this work included training a baseline [likelihood ratio policy gradient](http://www-anw.cs.umass.edu/~barto/courses/cs687/Policy%20Gradient-printable.pdf)
