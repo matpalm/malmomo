@@ -61,6 +61,21 @@ def shape_and_product_of(t):
       pass
   return "%s #%s" % (t.get_shape(), shape_product)
 
+def smooth(values, factor=0.9):
+  """smooth non zero values (by factor) towards 0th element."""
+  new_values = [0] * len(values)
+  for i in reversed(range(len(values))):
+    if values[i] != 0:
+      smoothed_value = values[i]
+      j = 0
+      while True:
+        if i-j < 0: break
+        new_values[i-j] += smoothed_value
+        smoothed_value *= factor
+        if abs(smoothed_value) < 1: break
+        j += 1
+  return new_values
+
 def _unpack_rgb_bytes(render):
   assert not render.is_png_encoded
   flat_rgb = np.fromstring(render.bytes, dtype=np.float16)
