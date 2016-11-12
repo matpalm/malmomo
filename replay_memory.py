@@ -52,18 +52,21 @@ class ReplayMemory(object):
     # some stats
     self.stats = collections.Counter()
 
-  def reset_from_event_log(self, log_file, max_to_restore):
-    elr = event_log.EventLogReader(log_file)
+  def reset_from_event_logs(self, log_files, max_to_restore):    
     num_episodes = 0
     num_events = 0
     start = time.time()
-    for n, episode in enumerate(elr.entries()):
-      if n%100 == 0: print "reset_from_event_log restoring", n, self.stats
-      if max_to_restore is not None and self.size() > max_to_restore: break
-      num_episodes += 1
-      num_events += len(episode.event)
-      self.add_episode(episode)
-      if self.full: break
+    for log_file in log_files.split(","):
+      print "restoring from [%s]. num_episodes=%s num_events=%s" \
+        % (log_file, num_episodes, num_events)
+      elr = event_log.EventLogReader(log_file.strip())
+      for episode in elr.entries():
+        if num_episodes%100 == 0: print "...reset_from_event_log restored", num_episodes, self.stats
+        if max_to_restore is not None and self.size() > max_to_restore: break
+        num_episodes += 1
+        num_events += len(episode.event)
+        self.add_episode(episode)
+        if self.full: break
     print "reset_from_event_log took", time.time()-start, "sec"\
           " num_episodes", num_episodes, "num_events", num_events
     sys.stdout.flush()
