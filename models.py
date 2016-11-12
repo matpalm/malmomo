@@ -18,6 +18,8 @@ def add_opts(parser):
   parser.add_argument('--action-noise-sigma', type=float, default=0.01,
                       help="OrnsteinUhlenbeckNoise sigma (magnitude) param for action"
                            " exploration")
+  parser.add_argument('--action-init-weights', type=float, default=0.001,
+                      help="init action final layer weights to (uniform)  [-V, V]")
 
 
 VERBOSE_DEBUG = False
@@ -87,7 +89,7 @@ class NafNetwork(base_network.Network):
         else:
           conv_net_output = self.conv_net_on(input_state, opts)
         hidden_layers = self.hidden_layers_on(conv_net_output, [100, 50])
-        weights_initializer = tf.random_uniform_initializer(-0.1, 0.1)
+        weights_initializer = tf.random_uniform_initializer(-opts.action_init_weights, opts.action_init_weights)
         self.output_action = slim.fully_connected(scope='fc',
                                                   inputs=hidden_layers,
                                                   num_outputs=action_dim,

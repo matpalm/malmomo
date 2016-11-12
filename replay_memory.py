@@ -12,7 +12,7 @@ def add_opts(parser):
                       help="max size of replay memory")
   parser.add_argument('--replay-memory-burn-in', type=int, default=100,
                       help="dont train from replay memory until it reaches this size")
-  parser.add_argument('--smooth-reward-factor', type=float, default=0.9,
+  parser.add_argument('--smooth-reward-factor', type=float, default=0.5,
                       help="if set use this value to smooth rewards")
 
 class ReplayMemory(object):
