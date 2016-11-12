@@ -68,7 +68,7 @@ agent = agent_cstr(opts)
 
 event_log = event_log.EventLog(opts.event_log_out) if opts.event_log_out else None
 
-for episode_idx in itertools.count(1):
+for episode_idx in itertools.count(0):
   eval_episode = (episode_idx % opts.eval_freq == 0)
   print >>sys.stderr, "EPISODE", episode_idx, util.dts(), "eval =", eval_episode
 
@@ -134,8 +134,9 @@ for episode_idx in itertools.count(1):
                                      "reward": event.reward})
 
   # report final reward for episode
-  print "REWARD\t%s\t%s\t%s" % (sum([e.reward for e in episode.event]),
-                                len(episode.event), eval_episode)
+  print "REWARD\t%s" % json.dumps({"episode": episode_idx, 
+                                   "reward": sum([e.reward for e in episode.event]),
+                                   "steps": len(episode.event), "eval": eval_episode})
 
   # end of episode
   agent.add_episode(episode)
