@@ -220,5 +220,4 @@ class NafNetwork(base_network.Network):
                                                       self.terminal_mask: batch.terminal_mask,
                                                       self.input_state_2: batch.state_2,
                                                       base_network.IS_TRAINING: True})
-    print "loss\t%s" % l
     return l

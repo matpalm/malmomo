@@ -17,6 +17,10 @@ import util
 
 np.set_printoptions(precision=5, threshold=10000, suppress=True, linewidth=10000)
 
+# reopen stdout/stderr unbuffered
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+sys.stderr = os.fdopen(sys.stderr.fileno(), 'w', 0)
+
 # TODO: no problem with slim import now so push all opts into module where used
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--run', type=int, default=None, help="output data to runs/N")

@@ -12,10 +12,10 @@ def add_opts(parser):
   parser.add_argument('--batch-size', type=int, default=128, help="training batch size")
   parser.add_argument('--batches-per-step', type=int, default=5,
                       help="number of batches to train per step")
-  parser.add_argument('--event-logs-in', type=str, default=None,
+  parser.add_argument('--event-log-in', type=str, default=None,
                       help="if set replay these event files into replay memory (comma"
                            " separated list")
-  parser.add_argument('--event-logs-in-num', type=int, default=None,
+  parser.add_argument('--event-log-in-num', type=int, default=None,
                       help="if set only read this many events from event-logs-in")
   parser.add_argument('--dont-store-new-memories', action='store_true',
                       help="if set do not store new memories.")
@@ -57,9 +57,9 @@ class NafAgent(object):
                                                     state_shape=render_shape,
                                                     action_dim=2,
                                                     load_factor=1.2)
-    if opts.event_logs_in:
-      self.replay_memory.reset_from_event_logs(opts.event_logs_in, 
-                                               opts.event_logs_in_num)
+    if opts.event_log_in:
+      self.replay_memory.reset_from_event_logs(opts.event_log_in, 
+                                               opts.event_log_in_num)
 
     # s1 and s2 placeholders
     batched_state_shape = [None] + list(render_shape)
@@ -103,9 +103,8 @@ class NafAgent(object):
       with self.sess.as_default():
         for _ in xrange(self.opts.batches_per_step):
           batch = self.replay_memory.batch(self.opts.batch_size)
-          start = time.time()
-          self.network.train(batch)
-          print "train\t%s" % (time.time()-start)
+          loss = self.network.train(batch)
+          print "loss\t%s" % loss
           self.network.target_value_net.update_weights()
       if self.saver_util is not None:
         self.saver_util.save_if_required()
