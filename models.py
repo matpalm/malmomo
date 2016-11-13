@@ -28,13 +28,12 @@ def toggle_verbose_debug(signal, frame):
   VERBOSE_DEBUG = not VERBOSE_DEBUG
 signal.signal(signal.SIGUSR1, toggle_verbose_debug)
 
+
 class ValueNetwork(base_network.Network):
   """ Value network component of a NAF network. Created as seperate net because it has a target network."""
 
   def __init__(self, namespace, input_state, opts): #, hidden_layer_config):
     super(ValueNetwork, self).__init__(namespace)
-
-    self.input_state = input_state
 
     with tf.variable_scope(namespace):
       # expose self.input_state_representation since it will be the network "shared"
@@ -47,10 +46,6 @@ class ValueNetwork(base_network.Network):
                                         weights_regularizer=tf.contrib.layers.l2_regularizer(0.01),
                                         activation_fn=None)  # (batch, 1)
 
-  def value_given(self, state):
-    return tf.get_default_session().run(self.value,
-                                        feed_dict={self.input_state: state,
-                                                   base_network.IS_TRAINING: False})
 
 class NafNetwork(base_network.Network):
 
