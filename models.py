@@ -36,14 +36,12 @@ class ValueNetwork(base_network.Network):
     super(ValueNetwork, self).__init__(namespace)
 
     with tf.variable_scope(namespace):
-      # do horizontal flipping on input if required
+      # do potential horizontal flipping of input state
       # recall input is (batch, height, width, rgb) and we want to flip on width
-      with tf.variable_scope("flip_x"):
-        batch_size = tf.shape(input_state)[0]
-        flipped_input_state = tf.select(tf.fill([batch_size],
-                                                base_network.FLIP_HORIZONTALLY),
-                                        tf.reverse(input_state, dims=[False, False, True, False]),
-                                        input_state)
+      batch_size = tf.shape(input_state)[0]
+      flipped_input_state = tf.select(tf.fill([batch_size], base_network.FLIP_HORIZONTALLY),
+                                      tf.reverse(input_state, dims=[False, False, True, False]),
+                                      input_state)
 
       # expose self.input_state_representation since it will be the network "shared"
       # by l_value & output_action network when running --share-input-state-representation
@@ -101,11 +99,10 @@ class NafNetwork(base_network.Network):
                                                   weights_regularizer=tf.contrib.layers.l2_regularizer(0.01),
                                                   activation_fn=tf.nn.tanh)  # (batch, action_dim)
 
-      # (potentially) do horizontal flipping on action x (corresponding to 
+      # do potentially horizontal flipping on action x (corresponding to 
       # an x-axis flip of input states)
       batch_size = tf.shape(self.input_action)[0]
-      input_action = tf.select(tf.fill([batch_size],
-                                       base_network.FLIP_HORIZONTALLY),
+      input_action = tf.select(tf.fill([batch_size], base_network.FLIP_HORIZONTALLY),
                                self.input_action * tf.constant([-1.0, 1.0]),
                                self.input_action)
 
