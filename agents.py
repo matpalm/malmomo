@@ -23,6 +23,8 @@ def add_opts(parser):
                       help="if set save ckpts to this dir")
   parser.add_argument('--ckpt-freq', type=int, default=3600,
                       help="freq (sec) to save ckpts")
+  parser.add_argument('--gpu-mem-fraction', type=float, default=0.5,
+                      help="fraction of gpu mem to allocate")
 
 class RandomAgent(object):
   def __init__(self, opts):
@@ -49,7 +51,7 @@ class NafAgent(object):
     config = tf.ConfigProto()
     #config.gpu_options.allow_growth = True
     #config.log_device_placement = True
-    config.gpu_options.per_process_gpu_memory_fraction = 0.5 #opts.gpu_mem_fraction
+    config.gpu_options.per_process_gpu_memory_fraction = opts.gpu_mem_fraction
     self.sess = tf.Session(config=config)
 
     render_shape = (opts.height, opts.width, 3)
@@ -101,11 +103,13 @@ class NafAgent(object):
     # do some number of training steps
     if self.replay_memory.burnt_in():
       with self.sess.as_default():
+        losses = []
         for _ in xrange(self.opts.batches_per_step):
           batch = self.replay_memory.batch(self.opts.batch_size)
           loss = self.network.train(batch)
-          print "loss\t%s" % loss
+          losses.append(loss)
           self.network.target_value_net.update_weights()
+        print "losses\t" + "\t".join(map(str, np.percentile(losses, np.linspace(0, 100, 11))))
       if self.saver_util is not None:
         self.saver_util.save_if_required()
 

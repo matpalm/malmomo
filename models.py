@@ -36,19 +36,18 @@ class ValueNetwork(base_network.Network):
     super(ValueNetwork, self).__init__(namespace)
 
     with tf.variable_scope(namespace):
-      # (potentially) do horizontal flipping on input
+      # do horizontal flipping on input if required
+      # recall input is (batch, height, width, rgb) and we want to flip on width
       with tf.variable_scope("flip_x"):
-        # bit of hack to do the fill here based on batch size rather than
-        # actual size of input_state, but fill can't operate on (at defn time)
-        # None sized batch dimension, and we never intend to flip during inference.
-        input_state = tf.select(tf.fill([opts.batch_size],
-                                        base_network.FLIP_HORIZONTALLY),
-                                tf.reverse(input_state, dims=[False, False, True, False]),
-                                input_state)
+        batch_size = tf.shape(input_state)[0]
+        flipped_input_state = tf.select(tf.fill([batch_size],
+                                                base_network.FLIP_HORIZONTALLY),
+                                        tf.reverse(input_state, dims=[False, False, True, False]),
+                                        input_state)
 
       # expose self.input_state_representation since it will be the network "shared"
       # by l_value & output_action network when running --share-input-state-representation
-      self.conv_net_output = self.conv_net_on(input_state, opts)
+      self.conv_net_output = self.conv_net_on(flipped_input_state, opts)
       self.hidden_layers = self.hidden_layers_on(self.conv_net_output, [100, 50])
       self.value = slim.fully_connected(scope='fc',
                                         inputs=self.hidden_layers,
@@ -103,13 +102,12 @@ class NafNetwork(base_network.Network):
                                                   activation_fn=tf.nn.tanh)  # (batch, action_dim)
 
       # (potentially) do horizontal flipping on action x (corresponding to 
-      # an x-axis flip of input states
-      input_action = tf.select(tf.fill([opts.batch_size],
+      # an x-axis flip of input states)
+      batch_size = tf.shape(self.input_action)[0]
+      input_action = tf.select(tf.fill([batch_size],
                                        base_network.FLIP_HORIZONTALLY),
-                               self.input_action() * tf.constant([-1.0, 1.0]),
-                               self.input_action())
-      input_action = tf.Print(input_action, [base_network.FLIP_HORIZONTALLY,
-                                             input_action], "input_actions")
+                               self.input_action * tf.constant([-1.0, 1.0]),
+                               self.input_action)
 
       # A (advantage) is a bit more work and has three components...
       # first the u / mu difference. note: to use in a matmul we need
@@ -213,7 +211,7 @@ class NafNetwork(base_network.Network):
     return map(float, np.squeeze(actions))
 
   def train(self, batch):
-    flip_horizontally = False
+    flip_horizontally = np.random.random() < 0.5
     if VERBOSE_DEBUG:
       print "batch.action"
       print batch.action.T
