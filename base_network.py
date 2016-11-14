@@ -9,6 +9,7 @@ import util
 #       requires fixing the bullet-before-slim problem though :/
 
 IS_TRAINING = tf.placeholder(tf.bool, name="is_training")
+FLIP_HORIZONTALLY = tf.placeholder(tf.bool, name="flip_horizontally")
 
 class Network(object):
   """Common class for handling ops for making / updating target networks."""
@@ -134,7 +135,8 @@ class Network(object):
   def render_all_convnet_activations(self, step, input_state_placeholder, state):
     activations = tf.get_default_session().run([self.pool1, self.pool2, self.pool3],
                                                feed_dict={input_state_placeholder: [state],
-                                                          IS_TRAINING: False})
+                                                          IS_TRAINING: False,
+                                                          FLIP_HORIZONTALLY: False})
     filename_base = "/tmp/activation_s%03d" % step
     self.render_convnet_activations(activations[0], filename_base + "_p0")
     self.render_convnet_activations(activations[1], filename_base + "_p1")

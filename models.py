@@ -36,6 +36,16 @@ class ValueNetwork(base_network.Network):
     super(ValueNetwork, self).__init__(namespace)
 
     with tf.variable_scope(namespace):
+      # (potentially) do horizontal flipping on input
+      with tf.variable_scope("flip_x"):
+        # bit of hack to do the fill here based on batch size rather than
+        # actual size of input_state, but fill can't operate on (at defn time)
+        # None sized batch dimension, and we never intend to flip during inference.
+        input_state = tf.select(tf.fill([opts.batch_size],
+                                        base_network.FLIP_HORIZONTALLY),
+                                tf.reverse(input_state, dims=[False, False, True, False]),
+                                input_state)
+
       # expose self.input_state_representation since it will be the network "shared"
       # by l_value & output_action network when running --share-input-state-representation
       self.conv_net_output = self.conv_net_on(input_state, opts)
@@ -92,12 +102,21 @@ class NafNetwork(base_network.Network):
                                                   weights_regularizer=tf.contrib.layers.l2_regularizer(0.01),
                                                   activation_fn=tf.nn.tanh)  # (batch, action_dim)
 
+      # (potentially) do horizontal flipping on action x (corresponding to 
+      # an x-axis flip of input states
+      input_action = tf.select(tf.fill([opts.batch_size],
+                                       base_network.FLIP_HORIZONTALLY),
+                               self.input_action() * tf.constant([-1.0, 1.0]),
+                               self.input_action())
+      input_action = tf.Print(input_action, [base_network.FLIP_HORIZONTALLY,
+                                             input_action], "input_actions")
+
       # A (advantage) is a bit more work and has three components...
       # first the u / mu difference. note: to use in a matmul we need
       # to convert this vector into a matrix by adding an "unused"
       # trailing dimension
-      u_mu_diff = self.input_action - self.output_action  # (batch, action_dim)
-      u_mu_diff = tf.expand_dims(u_mu_diff, -1)           # (batch, action_dim, 1)
+      u_mu_diff = input_action - self.output_action  # (batch, action_dim)
+      u_mu_diff = tf.expand_dims(u_mu_diff, -1)      # (batch, action_dim, 1)
 
       # next we have P = L(x).L(x)_T  where L is the values of lower triangular
       # matrix with diagonals exp'd. yikes!
@@ -182,7 +201,8 @@ class NafNetwork(base_network.Network):
     # only used during training after being the replay buffer.
     actions = tf.get_default_session().run(self.output_action,
                                            feed_dict={self.input_state: [state],
-                                                      base_network.IS_TRAINING: False})
+                                                      base_network.IS_TRAINING: False,
+                                                      base_network.FLIP_HORIZONTALLY: False})
     if add_noise:
       if VERBOSE_DEBUG:
         pre_noise = str(actions)
@@ -193,19 +213,21 @@ class NafNetwork(base_network.Network):
     return map(float, np.squeeze(actions))
 
   def train(self, batch):
+    flip_horizontally = False
     if VERBOSE_DEBUG:
       print "batch.action"
       print batch.action.T
       print "batch.reward", batch.reward.T
       print "batch.terminal_mask", batch.terminal_mask.T
-      values = tf.get_default_session().run([self._l_values, self.value_net.value, self.advantage,
-                                             self.target_value_net.value, ],
-                                            feed_dict={self.input_state: batch.state_1,
-                                                       self.input_action: batch.action,
-                                                       self.reward: batch.reward,
-                                                       self.terminal_mask: batch.terminal_mask,
-                                                       self.input_state_2: batch.state_2,
-                                                       base_network.IS_TRAINING: True})
+      values = tf.get_default_session().run([self._l_values, self.value_net.value, 
+                                             self.advantage, self.target_value_net.value],
+        feed_dict={self.input_state: batch.state_1,
+                   self.input_action: batch.action,
+                   self.reward: batch.reward,
+                   self.terminal_mask: batch.terminal_mask,
+                   self.input_state_2: batch.state_2,
+                   base_network.IS_TRAINING: True,
+                   base_network.FLIP_HORIZONTALLY: flip_horizontally})
       values = [np.squeeze(v) for v in values]
 #      print "_l_values"
 #      print values[0].T
@@ -214,10 +236,11 @@ class NafNetwork(base_network.Network):
       print "target_value_net.value ", values[3].T
 
     _, _, l = tf.get_default_session().run([self.check_numerics, self.train_op, self.loss],
-                                           feed_dict={self.input_state: batch.state_1,
-                                                      self.input_action: batch.action,
-                                                      self.reward: batch.reward,
-                                                      self.terminal_mask: batch.terminal_mask,
-                                                      self.input_state_2: batch.state_2,
-                                                      base_network.IS_TRAINING: True})
+      feed_dict={self.input_state: batch.state_1,
+                 self.input_action: batch.action,
+                 self.reward: batch.reward,
+                 self.terminal_mask: batch.terminal_mask,
+                 self.input_state_2: batch.state_2,
+                 base_network.IS_TRAINING: True,
+                 base_network.FLIP_HORIZONTALLY: flip_horizontally})
     return l
