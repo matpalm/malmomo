@@ -86,7 +86,8 @@ class NafAgent(object):
       else:
         self.sess.run(tf.initialize_all_variables())
       for v in tf.all_variables():
-        print >>sys.stderr, v.name, util.shape_and_product_of(v)
+        if '/biases:' not in v.name:
+          print >>sys.stderr, v.name, util.shape_and_product_of(v)
 
       # setup target network
       self.target_value_net.set_as_target_network_for(self.value_net, 0.01)
