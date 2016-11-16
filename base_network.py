@@ -73,12 +73,6 @@ class Network(object):
 
   def conv_net_on(self, input_layer, opts):
     # TODO: reinclude batch_norm config
-#    if opts.use_batch_norm:
-#      normalizer_fn = slim.batch_norm
-#      normalizer_params = { 'is_training': IS_TRAINING }
-#    else:
-    normalizer_fn = None
-    normalizer_params = None
 
     # whiten image, per channel, using batch_normalisation layer with
     # params calculated directly from batch.
@@ -90,26 +84,17 @@ class Network(object):
 
     # TODO: num_outputs here are really dependant on the incoming channels,
     # which depend on the #repeats & cameras so they should be a param.
-    model = slim.conv2d(whitened_input_layer, num_outputs=32, kernel_size=[7, 7],
-                        normalizer_fn=normalizer_fn,
-                        normalizer_params=normalizer_params,
-                        scope='conv1')
+    model = slim.conv2d(whitened_input_layer, num_outputs=32, kernel_size=[7, 7], scope='conv1')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool1')
     self.pool1 = model
     print >>sys.stderr, "pool1", util.shape_and_product_of(model)
 
-    model = slim.conv2d(model, num_outputs=32, kernel_size=[5, 5],
-                        normalizer_fn=normalizer_fn,
-                        normalizer_params=normalizer_params,
-                        scope='conv2')
+    model = slim.conv2d(model, num_outputs=32, kernel_size=[5, 5], scope='conv2')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool2')
     self.pool2 = model
     print >>sys.stderr, "pool2", util.shape_and_product_of(model)
 
-    model = slim.conv2d(model, num_outputs=16, kernel_size=[3, 3],
-                        normalizer_fn=normalizer_fn,
-                        normalizer_params=normalizer_params,
-                        scope='conv3')
+    model = slim.conv2d(model, num_outputs=16, kernel_size=[3, 3], scope='conv3')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool2')
     self.pool3 = model
     print >>sys.stderr, "pool3", util.shape_and_product_of(model)
