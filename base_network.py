@@ -84,17 +84,20 @@ class Network(object):
 
     # TODO: num_outputs here are really dependant on the incoming channels,
     # which depend on the #repeats & cameras so they should be a param.
-    model = slim.conv2d(whitened_input_layer, num_outputs=32, kernel_size=[7, 7], scope='conv1')
+    model = slim.conv2d(whitened_input_layer, num_outputs=32, kernel_size=[3, 3], scope='conv1a')
+    model = slim.conv2d(model, num_outputs=32, kernel_size=[3, 3], scope='conv1b')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool1')
     self.pool1 = model
     print >>sys.stderr, "pool1", util.shape_and_product_of(model)
 
-    model = slim.conv2d(model, num_outputs=32, kernel_size=[5, 5], scope='conv2')
+    model = slim.conv2d(model, num_outputs=32, kernel_size=[3, 3], scope='conv2a')
+    model = slim.conv2d(model, num_outputs=16, kernel_size=[3, 3], scope='conv2b')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool2')
     self.pool2 = model
     print >>sys.stderr, "pool2", util.shape_and_product_of(model)
 
-    model = slim.conv2d(model, num_outputs=16, kernel_size=[3, 3], scope='conv3')
+    model = slim.conv2d(model, num_outputs=16, kernel_size=[3, 3], scope='conv3a')
+    model = slim.conv2d(model, num_outputs=8, kernel_size=[3, 3], scope='conv3b')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool2')
     self.pool3 = model
     print >>sys.stderr, "pool3", util.shape_and_product_of(model)
