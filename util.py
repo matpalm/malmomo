@@ -121,8 +121,8 @@ class SaverUtil(object):
       info = yaml.load(open(ckpt_info_file, "r"))
       assert 'model_checkpoint_path' in info
       most_recent_ckpt = info['model_checkpoint_path']
-      sys.stderr.write("loading ckpt %s\n" % most_recent_ckpt)
-      self.saver.restore(self.sess, most_recent_ckpt)
+      sys.stderr.write("loading ckpt %s/%s\n" % (self.ckpt_dir, most_recent_ckpt))
+      self.saver.restore(self.sess, self.ckpt_dir+"/"+most_recent_ckpt)
       self.next_scheduled_save_time = time.time() + self.save_freq
     else:
       # no latest ckpts, init and force a save now
