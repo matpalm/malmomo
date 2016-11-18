@@ -104,10 +104,6 @@ class Network(object):
 
     return slim.flatten(model, scope='flat')
 
-#  def input_state_network(self, input_state, opts):
-#    input_state = self.simple_conv_net_on(input_state, opts)
-#    flattened_input_state = slim.flatten(input_state, scope='flat')
-#    return self.hidden_layers_starting_at(flattened_input_state, [150, 50])
 
   def render_convnet_activations(self, activations, filename_base):
     _batch, height, width, num_filters = activations.shape
