@@ -38,10 +38,9 @@ class ValueNetwork(base_network.Network):
     with tf.variable_scope(namespace):
       # do potential horizontal flipping of input state
       # recall input is (batch, height, width, rgb) and we want to flip on width
-      batch_size = tf.shape(input_state)[0]
-      flipped_input_state = tf.select(tf.fill([batch_size], base_network.FLIP_HORIZONTALLY),
-                                      tf.reverse(input_state, dims=[False, False, True, False]),
-                                      input_state)
+      flipped_input_state = tf.cond(base_network.FLIP_HORIZONTALLY,
+                                    lambda: tf.reverse(input_state, dims=[False, False, True, False]),
+                                    lambda: input_state)
 
       # expose self.input_state_representation since it will be the network "shared"
       # by l_value & output_action network when running --share-input-state-representation
@@ -101,10 +100,9 @@ class NafNetwork(base_network.Network):
 
       # do potentially horizontal flipping on action x (corresponding to 
       # an x-axis flip of input states)
-      batch_size = tf.shape(self.input_action)[0]
-      input_action = tf.select(tf.fill([batch_size], base_network.FLIP_HORIZONTALLY),
-                               self.input_action * tf.constant([-1.0, 1.0]),
-                               self.input_action)
+      input_action = tf.cond(base_network.FLIP_HORIZONTALLY,
+                             lambda: self.input_action * tf.constant([-1.0, 1.0]),
+                             lambda: self.input_action)
 
       # A (advantage) is a bit more work and has three components...
       # first the u / mu difference. note: to use in a matmul we need
