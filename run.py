@@ -47,24 +47,27 @@ replay_memory.add_opts(parser)
 opts = parser.parse_args()
 print >>sys.stderr, "OPTS", opts
 
-# setup client pool
-client_pool = MalmoPython.ClientPool()
-for i in range(opts.client_pool_size):
-  client_pool.add( MalmoPython.ClientInfo( "127.0.0.1", 10000+i ) )
+def create_malmo_components():
+  # setup client pool
+  client_pool = MalmoPython.ClientPool()
+  for i in range(opts.client_pool_size):
+    client_pool.add( MalmoPython.ClientInfo( "127.0.0.1", 10000+i ) )
+  # setup agent host
+  malmo = MalmoPython.AgentHost()
+  # can't do this without more complex caching of world state vid frames
+  #malmo.setObservationsPolicy(MalmoPython.ObservationsPolicy.LATEST_OBSERVATION_ONLY)
+  # define mission spec
+  spec = open(opts.mission).read()
+  spec = spec.replace("__WIDTH__", str(opts.width))
+  spec = spec.replace("__HEIGHT__", str(opts.height))
+  spec = spec.replace("__EPISODE_TIME_MS__", str(opts.episode_time_ms))
+  spec = spec.replace("__MS_PER_TICK__", "25" if opts.overclock else "50")
+  mission = MalmoPython.MissionSpec(spec, True)
+  mission_record = MalmoPython.MissionRecordSpec()
+  # return all
+  return client_pool, malmo, mission, mission_record
 
-# setup agent host
-malmo = MalmoPython.AgentHost()
-# can't do this without more complex caching of world state vid frames
-#malmo.setObservationsPolicy(MalmoPython.ObservationsPolicy.LATEST_OBSERVATION_ONLY)
-
-# define mission spec
-spec = open(opts.mission).read()
-spec = spec.replace("__WIDTH__", str(opts.width))
-spec = spec.replace("__HEIGHT__", str(opts.height))
-spec = spec.replace("__EPISODE_TIME_MS__", str(opts.episode_time_ms))
-spec = spec.replace("__MS_PER_TICK__", "25" if opts.overclock else "50")
-mission = MalmoPython.MissionSpec(spec, True)
-mission_record = MalmoPython.MissionRecordSpec()
+client_pool, malmo, mission, mission_record = create_malmo_components()
 
 # init our rl_agent
 agent_cstr = eval("agents.%sAgent" % opts.agent)
@@ -84,8 +87,13 @@ for episode_idx in itertools.count(0):
       malmo.startMission(mission, client_pool, mission_record, 0, "")
       break
     except RuntimeError as r:
+      # have observed that getting stuck here doesn't recover, even if the servers
+      # are restarted. try to recreate everything
       print >>sys.stderr, "failed to start mission", r
+      print >>sys.stderr, "recreating malmo components..."
       time.sleep(1)
+      client_pool, malmo, mission, mission_record = create_malmo_components()
+
   world_state = malmo.getWorldState()
   while len(world_state.observations) == 0:
     print >>sys.stderr, "started, but no obs?"
