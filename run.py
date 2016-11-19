@@ -35,7 +35,7 @@ parser.add_argument('--eval-freq', type=int, default=10,
                     help="do an eval (i.e. no noise) rollout every nth episodes")
 parser.add_argument('--mission', type=str, default="classroom_1room.xml",
                     help="mission to run")
-parser.add_argument('--overclock', action='store_true', help="run at x2 speed (needs more testing)")
+parser.add_argument('--overclock-rate', type=int, default=1, help="overclock multiplier")
 parser.add_argument('--client-pool-size', type=int, default=1,
                     help="number of instances of launchClient.sh running")
 
@@ -46,6 +46,12 @@ util.add_opts(parser)
 replay_memory.add_opts(parser)
 opts = parser.parse_args()
 print >>sys.stderr, "OPTS", opts
+
+overclock_tick_ms = 50 / opts.overclock_rate
+post_action_delay = 0.1 / opts.overclock_rate
+print >>sys.stderr, "opts.overclock_rate", opts.overclock_rate, \
+  "overclock_tick_ms", overclock_tick_ms, \
+  "post_action_delay", post_action_delay
 
 def create_malmo_components():
   # setup client pool
@@ -61,7 +67,7 @@ def create_malmo_components():
   spec = spec.replace("__WIDTH__", str(opts.width))
   spec = spec.replace("__HEIGHT__", str(opts.height))
   spec = spec.replace("__EPISODE_TIME_MS__", str(opts.episode_time_ms))
-  spec = spec.replace("__MS_PER_TICK__", "25" if opts.overclock else "50")
+  spec = spec.replace("__MS_PER_TICK__", str(overclock_tick_ms))
   mission = MalmoPython.MissionSpec(spec, True)
   mission_record = MalmoPython.MissionRecordSpec()
   # return all
@@ -130,7 +136,7 @@ for episode_idx in itertools.count(0):
     event.action.value.extend([turn, move])
 
     # wait for a bit and refetch state
-    time.sleep(0.05 if opts.overclock else 0.1)
+    time.sleep(post_action_delay)
     world_state = malmo.getWorldState()
 
     # check for any reward
