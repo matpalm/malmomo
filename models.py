@@ -207,11 +207,13 @@ class NafNetwork(base_network.Network):
 
   def train(self, batch):
     flip_horizontally = np.random.random() < 0.5
+
     if VERBOSE_DEBUG:
       print "batch.action"
       print batch.action.T
       print "batch.reward", batch.reward.T
       print "batch.terminal_mask", batch.terminal_mask.T
+      print "flip_horizontally", flip_horizontally
       values = tf.get_default_session().run([self._l_values, self.value_net.value, 
                                              self.advantage, self.target_value_net.value],
         feed_dict={self.input_state: batch.state_1,

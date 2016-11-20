@@ -83,20 +83,21 @@ event_log = event_log.EventLog(opts.event_log_out) if opts.event_log_out else No
 
 for episode_idx in itertools.count(0):
   eval_episode = (episode_idx % opts.eval_freq == 0)
-  print >>sys.stderr, "EPISODE", episode_idx, util.dts(), "eval =", eval_episode
+  print >>sys.stderr, util.dts(), "EPISODE", episode_idx, util.dts(), "eval =", eval_episode
 
   # start new mission; explicitly wait for first observation 
   # (not just world_state.has_mission_begun)
   mission_start = time.time()
   while True:
     try:
+      # TODO: work out why this blocks and how to get it timeout somehow...
       malmo.startMission(mission, client_pool, mission_record, 0, "")
       break
     except RuntimeError as r:
       # have observed that getting stuck here doesn't recover, even if the servers
       # are restarted. try to recreate everything
-      print >>sys.stderr, "failed to start mission", r
-      print >>sys.stderr, "recreating malmo components..."
+      print >>sys.stderr, util.dts(), "failed to start mission", r
+      print >>sys.stderr, util.dts(), "recreating malmo components..."
       time.sleep(1)
       client_pool, malmo, mission, mission_record = create_malmo_components()
 
