@@ -32,7 +32,7 @@ signal.signal(signal.SIGUSR1, toggle_verbose_debug)
 class ValueNetwork(base_network.Network):
   """ Value network component of a NAF network. Created as seperate net because it has a target network."""
 
-  def __init__(self, namespace, input_state, opts): #, hidden_layer_config):
+  def __init__(self, namespace, input_state, opts):
     super(ValueNetwork, self).__init__(namespace)
 
     with tf.variable_scope(namespace):
@@ -178,7 +178,7 @@ class NafNetwork(base_network.Network):
         # calc gradients
         gradients = optimiser.compute_gradients(self.loss)
         # potentially clip and wrap with debugging tf.Print
-        gradients = util.clip_and_debug_gradients(gradients, opts)
+        gradients, self.print_gradient_norms = util.clip_and_debug_gradients(gradients, opts)
         # apply
         self.train_op = optimiser.apply_gradients(gradients)
 
@@ -215,7 +215,8 @@ class NafNetwork(base_network.Network):
       print "batch.terminal_mask", batch.terminal_mask.T
       print "flip_horizontally", flip_horizontally
       values = tf.get_default_session().run([self._l_values, self.value_net.value, 
-                                             self.advantage, self.target_value_net.value],
+                                             self.advantage, self.target_value_net.value,
+                                             self.print_gradient_norms],
         feed_dict={self.input_state: batch.state_1,
                    self.input_action: batch.action,
                    self.reward: batch.reward,
@@ -224,8 +225,8 @@ class NafNetwork(base_network.Network):
                    base_network.IS_TRAINING: True,
                    base_network.FLIP_HORIZONTALLY: flip_horizontally})
       values = [np.squeeze(v) for v in values]
-#      print "_l_values"
-#      print values[0].T
+      print "_l_values",
+      print values[0].T
       print "value_net.value        ", values[1].T
       print "advantage              ", values[2].T
       print "target_value_net.value ", values[3].T

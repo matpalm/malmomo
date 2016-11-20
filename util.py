@@ -17,8 +17,6 @@ def add_opts(parser):
                       help="tf.train.XXXOptimizer to use")
   parser.add_argument('--optimiser-args', type=str, default="{\"learning_rate\": 0.001}",
                       help="json serialised args for optimiser constructor")
-  parser.add_argument('--print-gradients', action='store_true', 
-                      help="whether to verbose print all gradients and l2 norms")
 
 def dts():
   return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -33,14 +31,15 @@ def clip_and_debug_gradients(gradients, opts):
     just_gradients, variables = zip(*gradients)
     just_gradients, _ = tf.clip_by_global_norm(just_gradients, opts.gradient_clip)
     gradients = zip(just_gradients, variables)
-  # verbose debugging
-  if opts.print_gradients:
-    for i, (gradient, variable) in enumerate(gradients):
-      if gradient is not None:
-        gradients[i] = (tf.Print(gradient, [l2_norm(gradient)],
-                                 "gradient %s l2_norm " % variable.name), variable)
+  # create verbose debugging version that when evaled will print norms
+  print_gradient_norms = []
+  for i, (gradient, variable) in enumerate(gradients):
+    if gradient is not None:
+      print_gradient_norms.append(tf.Print(tf.constant(0), # don't actually return anything
+                                           [l2_norm(gradient)],
+                                           "gradient %s l2_norm " % variable.name))
   # done
-  return gradients
+  return gradients, print_gradient_norms
 
 def construct_optimiser(opts):
   optimiser_cstr = eval("tf.train.%sOptimizer" % opts.optimiser)
