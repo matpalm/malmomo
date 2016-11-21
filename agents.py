@@ -60,13 +60,13 @@ class NafAgent(object):
                                                     action_dim=2,
                                                     load_factor=1.2)
     if opts.event_log_in:
-      self.replay_memory.reset_from_event_logs(opts.event_log_in, 
+      self.replay_memory.reset_from_event_logs(opts.event_log_in,
                                                opts.event_log_in_num)
 
     # s1 and s2 placeholders
     batched_state_shape = [None] + list(render_shape)
-    s1 = tf.placeholder(shape=batched_state_shape, dtype=tf.float32)
-    s2 = tf.placeholder(shape=batched_state_shape, dtype=tf.float32)
+    s1 = tf.placeholder(shape=batched_state_shape, dtype=tf.uint8)
+    s2 = tf.placeholder(shape=batched_state_shape, dtype=tf.uint8)
 
     # initialise base models for value & naf networks. value subportion of net is
     # explicitly created seperate because it has a target network note: in the case of
@@ -77,7 +77,7 @@ class NafAgent(object):
     self.network = models.NafNetwork("naf", s1, s2,
                                      self.value_net, self.target_value_net,
                                      action_dim=2, opts=opts)
-    
+
     with self.sess.as_default():
       # setup saver util and either load latest ckpt or init variables
       self.saver_util = None

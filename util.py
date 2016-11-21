@@ -1,7 +1,7 @@
 import datetime
 import gzip
+import Image
 import json
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import tensorflow as tf
@@ -77,13 +77,14 @@ def smooth(values, factor=0.9):
 
 def _unpack_rgb_bytes(render):
   assert not render.is_png_encoded
-  flat_rgb = np.fromstring(render.bytes, dtype=np.float16)
+  flat_rgb = np.fromstring(render.bytes, dtype=np.uint8)
   rgb = flat_rgb.reshape((render.height, render.width, 3))
   return rgb
 
 def rgb_to_png_bytes(rgb):
+  img = Image.fromarray(rgb)
   sio = StringIO.StringIO()
-  plt.imsave(sio, rgb)
+  img.save(sio, format="png")
   return sio.getvalue()
 
 def ensure_render_is_png_encoded(render):
@@ -95,8 +96,10 @@ def ensure_render_is_png_encoded(render):
 def rgb_from_render(render):
   if render.is_png_encoded:
     # note PNG is always RGBA so we need to slice off A
-    rgba = plt.imread(StringIO.StringIO(render.bytes))
-    return rgba[:,:,:3]
+    img = Image.open(StringIO.StringIO(render.bytes))
+    img = np.array(img)
+    if img.shape[2] == 4: img = img[:,:,:3]  # backwards compat with older float32 events
+    return img
   else:
     return _unpack_rgb_bytes(render)
 
@@ -168,4 +171,3 @@ class OrnsteinUhlenbeckNoise(object):
     self.state += self.sigma * np.random.randn(self.dim)
     self.state = np.clip(self.max_magnitude, -self.max_magnitude, self.state)
     return np.copy(self.state)
-

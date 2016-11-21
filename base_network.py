@@ -74,6 +74,9 @@ class Network(object):
   def conv_net_on(self, input_layer, opts):
     # TODO: reinclude batch_norm config
 
+    # convert input_layer from uint8 (0, 255) to float32 (0.0, 1.0)
+    input_layer = tf.to_float(input_layer) / 255
+
     # whiten image, per channel, using batch_normalisation layer with
     # params calculated directly from batch.
     axis = list(range(input_layer.get_shape().ndims - 1))
