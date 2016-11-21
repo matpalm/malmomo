@@ -28,7 +28,6 @@ replay_memory.add_opts(parser)
 util.add_opts(parser)
 opts = parser.parse_args()
 #opts.ckpt_dir = "runs/14/d/ckpts"  # last known good
-opts.ckpt_dir = "runs/15/h/ckpts"
 print >>sys.stderr, "OPTS", opts
 
 # init our rl_agent
