@@ -52,12 +52,11 @@ for plot_idx, (img_file, desc) in enumerate([("runs/14/d/imgs/ep_00007/e0000.png
   # collect q-value for all x, y values in one hit
   all_x_y_pairs = np.stack(zip(np.ravel(X), np.ravel(Y)))
   img_repeated = [img] * all_x_y_pairs.shape[0]
-  q_values = agent.sess.run(an.q_value, 
+  q_values = agent.sess.run(an.q_value,
                             feed_dict={an.input_state: img_repeated,
                                        an.input_action: all_x_y_pairs,
                                        base_network.FLIP_HORIZONTALLY: False})
   Z = q_values.reshape(X.shape)
-  print "min/max Z", np.min(Z), np.max(Z)
 
   # plot as surface
   ax = fig.add_subplot(1,3,plot_idx+1, projection='3d')
@@ -72,11 +71,11 @@ for plot_idx, (img_file, desc) in enumerate([("runs/14/d/imgs/ep_00007/e0000.png
                           feed_dict={an.input_state: [img],
                                      base_network.FLIP_HORIZONTALLY: False})
   turn, move = np.squeeze(output)
-  q_value = agent.sess.run(an.q_value, 
+  q_value = agent.sess.run(an.q_value,
                            feed_dict={an.input_state: [img],
                                       an.input_action: [[turn, move]],
                                       base_network.FLIP_HORIZONTALLY: False})
-  print "turn", turn, "move", move, "=> q", np.squeeze(q_value)
+  print "turn", turn, "move", move, "=> q", np.squeeze(q_value), "Zmin=", np.min(Z), "Zmax=", np.max(Z)
   ax.plot([turn, turn], [move, move], [np.min(Z), np.max(Z)], linewidth=5)
 
 
