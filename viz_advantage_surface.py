@@ -47,7 +47,7 @@ for plot_idx, (img_file, desc) in enumerate([("runs/14/d/imgs/ep_00007/e0000.png
 
   # slurp in bitmap
   img = Image.open(img_file)
-  img = np.array(img, dtype=np.float32)[:,:,:3] / 255
+  img = np.array(img)[:,:,:3]
 
   # collect q-value for all x, y values in one hit
   all_x_y_pairs = np.stack(zip(np.ravel(X), np.ravel(Y)))
