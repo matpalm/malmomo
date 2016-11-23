@@ -1,5 +1,6 @@
 import base_network
 import numpy as np
+import ou_noise
 import signal
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
@@ -62,9 +63,9 @@ class NafNetwork(base_network.Network):
     super(NafNetwork, self).__init__(namespace)
 
     # noise to apply to actions during rollouts
-    self.exploration_noise = util.OrnsteinUhlenbeckNoise(action_dim,
-                                                         opts.action_noise_theta,
-                                                         opts.action_noise_sigma)
+    self.exploration_noise = ou_noise.OrnsteinUhlenbeckNoise(action_dim,
+                                                             opts.action_noise_theta,
+                                                             opts.action_noise_sigma)
 
     # we already have the V networks, created independently because it also
     # has a target network.
@@ -98,7 +99,7 @@ class NafNetwork(base_network.Network):
                                                   weights_regularizer=tf.contrib.layers.l2_regularizer(0.01),
                                                   activation_fn=tf.nn.tanh)  # (batch, action_dim)
 
-      # do potentially horizontal flipping on action x (corresponding to 
+      # do potentially horizontal flipping on action x (corresponding to
       # an x-axis flip of input states)
       input_action = tf.cond(base_network.FLIP_HORIZONTALLY,
                              lambda: self.input_action * tf.constant([-1.0, 1.0]),
@@ -214,7 +215,7 @@ class NafNetwork(base_network.Network):
       print "batch.reward", batch.reward.T
       print "batch.terminal_mask", batch.terminal_mask.T
       print "flip_horizontally", flip_horizontally
-      values = tf.get_default_session().run([self._l_values, self.value_net.value, 
+      values = tf.get_default_session().run([self._l_values, self.value_net.value,
                                              self.advantage, self.target_value_net.value,
                                              self.print_gradient_norms],
         feed_dict={self.input_state: batch.state_1,

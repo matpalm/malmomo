@@ -37,7 +37,7 @@ class ReplayMemory(object):
     # memory since a rollout of length n contains n+1 states.
     self.state_buffer_size = int(self.buffer_size * load_factor)
     shape = [self.state_buffer_size] + list(state_shape)
-    self.state = np.empty(shape, dtype=np.float16)
+    self.state = np.empty(shape, dtype=np.uint8)  # (0, 255)
 
     # keep track of free slots in state buffer
     self.state_free_slots = list(range(self.state_buffer_size))
@@ -52,7 +52,7 @@ class ReplayMemory(object):
     # some stats
     self.stats = collections.Counter()
 
-  def reset_from_event_logs(self, log_files, max_to_restore):    
+  def reset_from_event_logs(self, log_files, max_to_restore):
     num_episodes = 0
     num_events = 0
     start = time.time()
@@ -164,5 +164,3 @@ class ReplayMemory(object):
       else:
         with open("%s/%05d.png" % (directory, idx), "wb") as f:
           f.write(util.rgb_to_png_bytes(self.state[idx]))
-
-

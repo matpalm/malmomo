@@ -36,8 +36,8 @@ parser.add_argument('--eval-freq', type=int, default=10,
 parser.add_argument('--mission', type=str, default="classroom_1room.xml",
                     help="mission to run")
 parser.add_argument('--overclock-rate', type=int, default=1, help="overclock multiplier")
-parser.add_argument('--client-pool-size', type=int, default=1,
-                    help="number of instances of launchClient.sh running")
+parser.add_argument('--client-ports', type=str, default="10000",
+                    help="comma seperated list of client ports")
 
 
 agents.add_opts(parser)
@@ -56,8 +56,9 @@ print >>sys.stderr, "opts.overclock_rate", opts.overclock_rate, \
 def create_malmo_components():
   # setup client pool
   client_pool = MalmoPython.ClientPool()
-  for i in range(opts.client_pool_size):
-    client_pool.add( MalmoPython.ClientInfo( "127.0.0.1", 10000+i ) )
+  for port in map(int, opts.client_ports.split(",")):
+    print >>sys.stderr, "adding client with port %d" % port
+    client_pool.add(MalmoPython.ClientInfo("127.0.0.1", port))
   # setup agent host
   malmo = MalmoPython.AgentHost()
   # can't do this without more complex caching of world state vid frames
@@ -85,7 +86,7 @@ for episode_idx in itertools.count(0):
   eval_episode = (episode_idx % opts.eval_freq == 0)
   print >>sys.stderr, util.dts(), "EPISODE", episode_idx, util.dts(), "eval =", eval_episode
 
-  # start new mission; explicitly wait for first observation 
+  # start new mission; explicitly wait for first observation
   # (not just world_state.has_mission_begun)
   mission_start = time.time()
   while True:
@@ -121,9 +122,7 @@ for episode_idx in itertools.count(0):
     event = episode.event.add()
 
     frame = world_state.video_frames[0]
-    # TODO: should be able to do this conversion directly, i.e. not via Image
-    img = Image.frombytes('RGB', (frame.width, frame.height), str(frame.pixels))
-    img = np.array(img, dtype=np.float16) / 255
+    img = np.array(Image.frombytes('RGB', (frame.width, frame.height), str(frame.pixels)))
     event.render.width = frame.width
     event.render.height = frame.height
     event.render.bytes = img.tostring()
@@ -153,7 +152,7 @@ for episode_idx in itertools.count(0):
                                      "reward": event.reward})
 
   # report final reward for episode
-  print "REWARD\t%s" % json.dumps({"episode": episode_idx, 
+  print "REWARD\t%s" % json.dumps({"episode": episode_idx,
                                    "reward": sum([e.reward for e in episode.event]),
                                    "steps": len(episode.event), "eval": eval_episode})
 
@@ -163,5 +162,3 @@ for episode_idx in itertools.count(0):
     event_log.add_episode(episode)
   print "agent stats\t", agent.stats()
   sys.stdout.flush()
-
-  

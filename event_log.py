@@ -86,6 +86,3 @@ if __name__ == "__main__":
         filename = "%s/e%04d.png" % (dir, event_id)
         img.save(filename)
   print >>sys.stderr, "read", total_num_read_episodes, "episodes for a total of", total_num_read_events, "events"
-
-
-
