@@ -68,8 +68,10 @@ if __name__ == "__main__":
   for episode_id, episode in enumerate(elr.entries()):
     if opts.nth is not None and episode_id % opts.nth != 0:
       continue
-    if episode_whitelist is not None and episode_id not in episode_whitelist:
-      continue
+    if episode_whitelist is not None:
+      if episode_id not in episode_whitelist:
+        continue
+      episode_whitelist.discard(episode_id)
     if opts.echo:
       print "-----", episode_id
       print episode
@@ -85,4 +87,6 @@ if __name__ == "__main__":
 #        img = img.resize((200, 200))
         filename = "%s/e%04d.png" % (dir, event_id)
         img.save(filename)
+    if episode_whitelist is not None and len(episode_whitelist) == 0:
+      break
   print >>sys.stderr, "read", total_num_read_episodes, "episodes for a total of", total_num_read_events, "events"
