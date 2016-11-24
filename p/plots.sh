@@ -8,6 +8,7 @@ set -ex
 
 ./p/emit_rewards.py $1 > /tmp/r.tsv &
 ./p/emit_stats.py $1 > /tmp/mt.tsv &
+./p/emit_losses.py $1 > /tmp/l.tsv &
 wait
 Rscript --vanilla ./p/emit_plots.R
 eog /tmp/plots.png
