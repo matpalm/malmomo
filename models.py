@@ -16,7 +16,7 @@ def add_opts(parser):
   parser.add_argument('--action-noise-theta', type=float, default=0.01,
                       help="OrnsteinUhlenbeckNoise theta (rate of change) param for action"
                            " exploration")
-  parser.add_argument('--action-noise-sigma', type=float, default=0.01,
+  parser.add_argument('--action-noise-sigma', type=float, default=0.1,
                       help="OrnsteinUhlenbeckNoise sigma (magnitude) param for action"
                            " exploration")
   parser.add_argument('--action-init-weights', type=float, default=0.001,
