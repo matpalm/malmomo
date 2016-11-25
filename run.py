@@ -129,15 +129,17 @@ for episode_idx in itertools.count(0):
     event.render.is_png_encoded = False
 
     # decide action given state and send to malmo
-    # TODO: change to take model_pb2.Render directly and return model_pb2.Action
     turn, move = agent.action_given(img, is_eval=eval_episode)
     malmo.sendCommand("turn %f" % turn)
     malmo.sendCommand("move %f" % move)
     event.action.value.extend([turn, move])
 
-    # wait for a bit and refetch state
-    time.sleep(post_action_delay)
-    world_state = malmo.getWorldState()
+    # wait for next state
+    while True:
+      time.sleep(0.01)
+      world_state = malmo.getWorldState()
+      num_obs = world_state.number_of_observations_since_last_state
+      if num_obs > 0 or not world_state.is_mission_running: break
 
     # check for any reward
     if world_state.rewards:

@@ -5,6 +5,7 @@
   </About>
   <ModSettings>
     <MsPerTick>__MS_PER_TICK__</MsPerTick>
+    <PrioritiseOffscreenRendering>true</PrioritiseOffscreenRendering>
   </ModSettings>
   <ServerSection>
       <ServerInitialConditions>
