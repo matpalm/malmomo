@@ -63,20 +63,7 @@ class NafAgent(object):
       self.replay_memory.reset_from_event_logs(opts.event_log_in,
                                                opts.event_log_in_num)
 
-    # s1 and s2 placeholders
-    batched_state_shape = [None] + list(render_shape)
-    s1 = tf.placeholder(shape=batched_state_shape, dtype=tf.uint8)
-    s2 = tf.placeholder(shape=batched_state_shape, dtype=tf.uint8)
-
-    # initialise base models for value & naf networks. value subportion of net is
-    # explicitly created seperate because it has a target network note: in the case of
-    # --share-input-state-representation the input state network of the value_net will
-    # be reused by the naf.l_value and naf.output_actions net
-    self.value_net = models.ValueNetwork("value", s1, opts)
-    self.target_value_net = models.ValueNetwork("target_value", s2, opts)
-    self.network = models.NafNetwork("naf", s1, s2,
-                                     self.value_net, self.target_value_net,
-                                     action_dim=2, opts=opts)
+    self.network = models.NafNetwork("naf", action_dim=2, opts=opts)
 
     with self.sess.as_default():
       # setup saver util and either load latest ckpt or init variables
@@ -90,7 +77,7 @@ class NafAgent(object):
           print >>sys.stderr, v.name, util.shape_and_product_of(v)
 
       # setup target network
-      self.target_value_net.set_as_target_network_for(self.value_net, 0.01)
+      self.network.post_init_setup()
 
   def action_given(self, state, is_eval):
     with self.sess.as_default():
