@@ -57,8 +57,6 @@ class ValueNetwork(base_network.Network):
 class NafNetwork(base_network.Network):
 
   def __init__(self, namespace,
-               input_state, input_state_2,
-               value_net, target_value_net,
                action_dim, opts):
     super(NafNetwork, self).__init__(namespace)
 
@@ -67,14 +65,16 @@ class NafNetwork(base_network.Network):
                                                              opts.action_noise_theta,
                                                              opts.action_noise_sigma)
 
-    # we already have the V networks, created independently because it also
-    # has a target network.
-    self.value_net = value_net
-    self.target_value_net = target_value_net
+    # s1 and s2 placeholders
+    batched_state_shape = [None, opts.height, opts.width, 3]
+    self.input_state = tf.placeholder(shape=batched_state_shape, dtype=tf.uint8)
+    self.input_state_2 = tf.placeholder(shape=batched_state_shape, dtype=tf.uint8)
 
-    # keep placeholders provided and build any others required
-    self.input_state = input_state
-    self.input_state_2 = input_state_2
+    # value (and target value) sub networks
+    self.value_net = ValueNetwork("value", self.input_state, opts)
+    self.target_value_net = ValueNetwork("target_value", self.input_state_2, opts)
+
+    # build other placeholders
     self.input_action = tf.placeholder(shape=[None, action_dim],
                                        dtype=tf.float32, name="input_action")
     self.reward =  tf.placeholder(shape=[None, 1],
@@ -87,7 +87,7 @@ class NafNetwork(base_network.Network):
       # this is our target op for inference (i.e. value that maximises Q given input_state)
       with tf.variable_scope("output_action"):
         if opts.share_conv_net:
-          conv_net_output = value_net.conv_net_output
+          conv_net_output = self.value_net.conv_net_output
         else:
           conv_net_output = self.conv_net_on(input_state, opts)
         hidden_layers = self.hidden_layers_on(conv_net_output, [100, 100])
@@ -119,7 +119,7 @@ class NafNetwork(base_network.Network):
       num_l_values = (action_dim*(action_dim+1))/2
       with tf.variable_scope("l_values"):
         if opts.share_conv_net:
-          conv_net_output = value_net.conv_net_output
+          conv_net_output = self.value_net.conv_net_output
         else:
           conv_net_output = self.conv_net_on(input_state, opts)
         hidden_layers = self.hidden_layers_on(conv_net_output, [100, 100])
@@ -164,11 +164,11 @@ class NafNetwork(base_network.Network):
       self.advantage = tf.reshape(advantage, [-1, 1])  # (batch, 1)
 
       # Q is value + advantage
-      self.q_value = value_net.value + self.advantage
+      self.q_value = self.value_net.value + self.advantage
 
       # target y is reward + discounted target value
       self.target_y = self.reward + (self.terminal_mask * opts.discount * \
-                                     target_value_net.value)
+                                     self.target_value_net.value)
       self.target_y = tf.stop_gradient(self.target_y)
 
       # loss is squared difference that we want to minimise.
@@ -188,6 +188,9 @@ class NafNetwork(base_network.Network):
       for op, name in [(l_values, 'l_values'), (L,'L'), (self.loss, 'loss')]:
         checks.append(tf.check_numerics(op, name))
       self.check_numerics = tf.group(*checks)
+
+  def post_init_setup(self):
+    self.target_value_net.set_as_target_network_for(self.value_net, 0.01)
 
   def action_given(self, state, add_noise):
     # NOTE: noise is added _outside_ tf graph. we do this simply because the noisy output
