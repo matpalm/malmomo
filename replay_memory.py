@@ -99,6 +99,7 @@ class ReplayMemory(object):
       state_1_idx = state_2_idx
 
     self.stats['free_slots'] = len(self.state_free_slots)
+    self.stats['size'] = self.size()
 
   def _add(self, s1_idx, a, r, t, s2_idx):
 #    print ">add s1_idx=%s, a=%s, r=%s, t=%s s2_idx=%s" % (s1_idx, a, r, t, s2_idx)

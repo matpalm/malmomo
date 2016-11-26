@@ -58,7 +58,7 @@ class NafAgent(object):
     self.replay_memory = replay_memory.ReplayMemory(opts=opts,
                                                     state_shape=render_shape,
                                                     action_dim=2,
-                                                    load_factor=1.2)
+                                                    load_factor=1.1)
     if opts.event_log_in:
       self.replay_memory.reset_from_event_logs(opts.event_log_in,
                                                opts.event_log_in_num)
