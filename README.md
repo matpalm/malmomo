@@ -14,7 +14,8 @@ method for the low dimensional problem (7d pose of cart and pole) and training [
 [NAF](https://arxiv.org/abs/1603.00748) for the high dimensional raw pixel input version.
 
 phase 3 is *malmomo* (i.e. mo malmo (i.e. more malmo)). it includes training NAF against a [project malmo](https://github.com/Microsoft/malmo)
-environment mapping raw pixels to continuous turn/move control. 
+environment mapping raw pixels to continuous turn/move control. the animation above shows an evaluation in an agent trained in a simpler 2x2 maze that generalises
+to a larger maze (but still gets stuck in corners :)
 
 # main components
 
@@ -27,7 +28,7 @@ environment mapping raw pixels to continuous turn/move control.
 
 pretty early days but...
 
-## gather some offline data and then train a naf agent 
+## gather some offline data and then train a naf agent
 
 ```
 # start malmo client
@@ -46,7 +47,7 @@ pretty early days but...
 --replay-memory-size=150000 \
 --event-log-in=random.events \
 --event-log-out=naf.events --dont-store-new-memories \
---batches-per-step=100 
+--batches-per-step=100
 
 # drop the --dont-store-new-memories to have it add to training
 
@@ -72,7 +73,7 @@ to enable / disable verbose debugging issue a `kill -sigusr1` to running process
 
 # install stuff
 
-malmomo depends on 
+malmomo depends on
 
 * [malmo](https://github.com/Microsoft/malmo) for orchestrating minecraft
 * [grpc](http://www.grpc.io/) & [protobuffers](https://developers.google.com/protocol-buffers/) for binary storage and transport of experience data
@@ -82,4 +83,3 @@ malmomo depends on
 pip install grpcio grpcio-tools
 python -m grpc.tools.protoc -I. --python_out=. --grpc_python_out=. *proto
 ```
-
