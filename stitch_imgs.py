@@ -13,7 +13,7 @@ outdir = sys.argv[1]
 dirs = sys.argv[2:]
 imgs_per_directory = {}
 max_imgs = 0
-nth = 2
+nth = 5
 
 print dirs, len(dirs)
 assert len(dirs) == X * Y
