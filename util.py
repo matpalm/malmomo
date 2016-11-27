@@ -13,9 +13,9 @@ import yaml
 def add_opts(parser):
   parser.add_argument('--gradient-clip', type=float, default=5,
                       help="do global clipping to this norm")
-  parser.add_argument('--optimiser', type=str, default="GradientDescent",
+  parser.add_argument('--optimiser', type=str, default="Adam",
                       help="tf.train.XXXOptimizer to use")
-  parser.add_argument('--optimiser-args', type=str, default="{\"learning_rate\": 0.001}",
+  parser.add_argument('--optimiser-args', type=str, default="{\"learning_rate\": 0.0001}",
                       help="json serialised args for optimiser constructor")
 
 def dts():
