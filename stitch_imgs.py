@@ -13,6 +13,7 @@ outdir = sys.argv[1]
 dirs = sys.argv[2:]
 imgs_per_directory = {}
 max_imgs = 0
+nth = 2
 
 print dirs, len(dirs)
 assert len(dirs) == X * Y
@@ -22,7 +23,8 @@ for directory in dirs:
   print "imgs per dir", directory, len(i)
   max_imgs = max(max_imgs, len(i))
 
-for i in range(max_imgs):
+i = 0
+while i <= max_imgs:
   print i, "/", max_imgs
   background = Image.new('RGB',
                          ((W*X)+(X*pixel_buffer), (H*Y)+(Y*pixel_buffer)),
@@ -36,3 +38,4 @@ for i in range(max_imgs):
     y_offset = (gy*H)+(gy*pixel_buffer)
     background.paste(img, (x_offset, y_offset))
   background.save("%s/stitched_%03d.png" % (outdir, i))
+  i += nth
