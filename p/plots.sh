@@ -6,9 +6,10 @@ fi
 
 set -ex
 
-./p/emit_rewards.py $1 > /tmp/r.tsv &
-./p/emit_stats.py $1 > /tmp/mt.tsv &
-./p/emit_losses.py $1 > /tmp/l.tsv &
+./p/emit_stats.py --emit=losses --max-episode=5000 $1 > /tmp/l.tsv &
+./p/emit_stats.py --emit=rewards --max-episode=5000 $1 > /tmp/r.tsv &
+./p/emit_stats.py --emit=turn_moves --max-episode=5000 $1 > /tmp/mt.tsv &
 wait
+
 Rscript --vanilla ./p/emit_plots.R
 eog /tmp/plots.png

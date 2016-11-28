@@ -5,7 +5,7 @@
   </About>
   <ModSettings>
     <MsPerTick>__MS_PER_TICK__</MsPerTick>
-<!--    <PrioritiseOffscreenRendering>true</PrioritiseOffscreenRendering> -->
+    <PrioritiseOffscreenRendering>true</PrioritiseOffscreenRendering>
   </ModSettings>
   <ServerSection>
       <ServerInitialConditions>
@@ -31,7 +31,7 @@
           </divisions>
           <horizontalObstacles>
             <gap>1000</gap>
-            <bridge>0</bridge>
+            <bridge>500</bridge>
             <door>0</door>
             <puzzle>0</puzzle>
             <jump>0</jump>

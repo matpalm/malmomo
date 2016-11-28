@@ -14,8 +14,8 @@ method for the low dimensional problem (7d pose of cart and pole) and training [
 [NAF](https://arxiv.org/abs/1603.00748) for the high dimensional raw pixel input version.
 
 phase 3 is *malmomo* (i.e. mo malmo (i.e. more malmo)). it includes training NAF against a [project malmo](https://github.com/Microsoft/malmo)
-environment mapping raw pixels to continuous turn/move control. the animation above shows an evaluation in an agent trained in a simpler 2x2 maze that generalises
-to a larger maze (but still gets stuck in corners :)
+environment mapping raw pixels to continuous turn/move control. the animation above shows an evaluation in an agent trained in a simpler 2x2
+maze that generalises to a larger maze (but still gets stuck in corners :)
 
 # main components
 
@@ -26,8 +26,6 @@ to a larger maze (but still gets stuck in corners :)
 
 # example usage
 
-pretty early days but...
-
 ## gather some offline data and then train a naf agent
 
 ```
@@ -35,38 +33,43 @@ pretty early days but...
 <MALMO>/Minecraft/launchClient.sh
 
 # start an agent randomly gathering data
-./run.py --agent=Random --episode-time-ms=5000 --event-log-out=random.events
+mkdir random_agent
+./run.py --agent=Random --episode-time-ms=5000 --event-log-out=random_agent/events
 
 # review event data using event_log tools to dump imgs from every 10th episode
-./event_log --file=random.events --img-output-dir=/tmp/imgs --nth=10
+./event_log --file=random_agent/events --img-output-dir=random_agent/imgs --nth=10
 # review /tmp/imgs/e00000/s00000.png, etc
 
-# train a NAF agent against just this data, don't have it add new experiences and run an eval every once in awhile...
+# train a NAF agent with replay memory seeded with first 1000 episodes from random agent
+mkdir naf_agent
 ./run.py --agent=Naf \
 --episode-time-ms=5000 \
 --replay-memory-size=150000 \
---event-log-in=random.events \
---event-log-out=naf.events --dont-store-new-memories \
---batches-per-step=100
+--event-log-in=random_agent/events --event-log-in-num=1000 \
+--event-log-out=naf_agent/events \
+--ckpt-dir=naf_agent/ckpts
 
-# drop the --dont-store-new-memories to have it add to training
-
+# do an eval of this agent (i.e. no noise added to actions) using latest model checkpoint
+./run.py --agent=Naf \
+--dont-store-new-memories --eval-freq=1 \
+--event-log-out=naf_agent/eval_events \
+--ckpt-dir=naf_agent/ckpts
 ```
 
 ### gather data across multiple instances
 
 ```
 # start N, say 3, malmo clients
-shell1> launchClient.sh -port 10000
-shell2> launchClient.sh -port 10001
-shell3> launchClient.sh -port 10002
+shell1> launchClient.sh -port 11100
+shell2> launchClient.sh -port 11200
+shell3> launchClient.sh -port 11300
 ```
 
 ```
 # start N overclocked random agents
-shell4> ./run.py --agent=Random --episode-time-ms=10000 --event-log-out=random1.events --mission=classroom_2room.xml --client-pool-size=3
-shell5> ./run.py --agent=Random --episode-time-ms=10000 --event-log-out=random2.events --mission=classroom_2room.xml --client-pool-size=3
-shell6> ./run.py --agent=Random --episode-time-ms=10000 --event-log-out=random3.events --mission=classroom_2room.xml --client-pool-size=3
+shell4> ./run.py --agent=Random --overclock-rate=4 --event-log-out=random1.events --client-ports=11100,11200,11300
+shell5> ./run.py --agent=Random --overclock-rate=4 --event-log-out=random2.events --client-ports=11100,11200,11300
+shell6> ./run.py --agent=Random --overclock-rate=4 --event-log-out=random3.events --client-ports=11100,11200,11300
 ```
 
 to enable / disable verbose debugging issue a `kill -sigusr1` to running process.
