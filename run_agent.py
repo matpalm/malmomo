@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 import agents
 import argparse
+import ckpt_util
 import event_log
+import grpc
 import itertools
 import json
 import MalmoPython
@@ -10,7 +12,6 @@ import model_pb2
 import numpy as np
 import os
 from PIL import Image
-import replay_memory
 import sys
 import time
 import util
@@ -21,7 +22,6 @@ np.set_printoptions(precision=5, threshold=10000, suppress=True, linewidth=10000
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 sys.stderr = os.fdopen(sys.stderr.fileno(), 'w', 0)
 
-# TODO: no problem with slim import now so push all opts into module where used
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--run', type=int, default=None, help="output data to runs/N")
 parser.add_argument('--width', type=int, default=160, help="render width")
@@ -31,19 +31,21 @@ parser.add_argument('--episode-time-ms', type=int, default=10000,
 parser.add_argument('--agent', type=str, default="Naf", help="{Naf,Random}")
 parser.add_argument('--event-log-out', type=str, default=None,
                     help="if set agent also write all episodes to this file")
-parser.add_argument('--eval-freq', type=int, default=10,
-                    help="do an eval (i.e. no noise) rollout every nth episodes")
+# TODO: do as specific agent that runs every N minutes, no as nth in each agent
+#parser.add_argument('--eval-freq', type=int, default=10,
+#                    help="do an eval (i.e. no noise) rollout every nth episodes")
 parser.add_argument('--mission', type=str, default="classroom_1room.xml",
                     help="mission to run")
 parser.add_argument('--overclock-rate', type=int, default=1, help="overclock multiplier")
 parser.add_argument('--client-ports', type=str, default="10000",
                     help="comma seperated list of client ports")
-
+parser.add_argument('--trainer-port', type=int, default=20045,
+                    help="grpc port to trainer")
 
 agents.add_opts(parser)
+ckpt_util.add_opts(parser)
 models.add_opts(parser)
 util.add_opts(parser)
-replay_memory.add_opts(parser)
 opts = parser.parse_args()
 print >>sys.stderr, "OPTS", opts
 
@@ -80,11 +82,16 @@ client_pool, malmo, mission, mission_record = create_malmo_components()
 agent_cstr = eval("agents.%sAgent" % opts.agent)
 agent = agent_cstr(opts)
 
+# init event log (if logging events)
 event_log = event_log.EventLog(opts.event_log_out) if opts.event_log_out else None
 
+# hook up connection to trainer
+channel = grpc.insecure_channel("localhost:%d" % opts.trainer_port)
+trainer = model_pb2.ModelStub(channel)
+
 for episode_idx in itertools.count(0):
-  eval_episode = (episode_idx % opts.eval_freq == 0)
-  print >>sys.stderr, util.dts(), "EPISODE", episode_idx, util.dts(), "eval =", eval_episode
+#  eval_episode = (episode_idx % opts.eval_freq == 0)
+  print >>sys.stderr, util.dts(), "EPISODE", episode_idx, util.dts() #, "eval =", eval_episode
 
   # start new mission; explicitly wait for first observation
   # (not just world_state.has_mission_begun)
@@ -129,7 +136,7 @@ for episode_idx in itertools.count(0):
     event.render.is_png_encoded = False
 
     # decide action given state and send to malmo
-    turn, move = agent.action_given(img, is_eval=eval_episode)
+    turn, move = agent.action_given(img, is_eval=False) #eval_episode)
     malmo.sendCommand("turn %f" % turn)
     malmo.sendCommand("move %f" % move)
     event.action.value.extend([turn, move])
@@ -150,17 +157,22 @@ for episode_idx in itertools.count(0):
 
     # dump debug
     print "ACTION\t%s" % json.dumps({"episode": episode_idx, "step": len(episode.event),
-                                     "turn": turn, "move": move, "eval": eval_episode,
+                                     "turn": turn, "move": move, "eval": False,
                                      "reward": event.reward})
 
   # report final reward for episode
   print "REWARD\t%s" % json.dumps({"episode": episode_idx,
                                    "reward": sum([e.reward for e in episode.event]),
-                                   "steps": len(episode.event), "eval": eval_episode})
+                                   "steps": len(episode.event), "eval": False})
 
   # end of episode
-  agent.add_episode(episode)
+  agent.end_of_episode()
+  try:
+    trainer.AddEpisode(episode)
+  except grpc._channel._Rendezvous as e:
+    # TODO: be more robust here
+    print "warning: failed to add episode", e
   if event_log:
     event_log.add_episode(episode)
-  print "agent stats\t", agent.stats()
+#  print "trainer stats\t", trainer.stats()   TODO
   sys.stdout.flush()
