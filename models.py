@@ -189,7 +189,7 @@ class NafNetwork(base_network.Network):
         checks.append(tf.check_numerics(op, name))
       self.check_numerics = tf.group(*checks)
 
-  def post_init_setup(self):
+  def setup_target_network(self):
     self.target_value_net.set_as_target_network_for(self.value_net, 0.01)
 
   def action_given(self, state, add_noise):

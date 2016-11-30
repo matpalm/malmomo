@@ -5,7 +5,7 @@
   </About>
   <ModSettings>
     <MsPerTick>__MS_PER_TICK__</MsPerTick>
-    <PrioritiseOffscreenRendering>true</PrioritiseOffscreenRendering>
+    <PrioritiseOffscreenRendering>__OFFSCREEN_RENDERING__</PrioritiseOffscreenRendering>
   </ModSettings>
   <ServerSection>
       <ServerInitialConditions>
@@ -20,18 +20,18 @@
       <FlatWorldGenerator generatorString="3;7,220*1,5*3,2;3;,biome_1" />
       <ClassroomDecorator seed="__SEED__">
         <specification>
-          <width>15</width>
+          <width>__WIDTH_LENGTH__</width>
           <height>7</height>
-          <length>15</length>
-          <pathLength>1</pathLength>
+          <length>__WIDTH_LENGTH__</length>
+          <pathLength>__PATH_LENGTH__</pathLength>
           <divisions>
-            <southNorth>1</southNorth>
-            <eastWest>1</eastWest>
+            <southNorth>__DIVISIONS__</southNorth>
+            <eastWest>__DIVISIONS__</eastWest>
             <aboveBelow>0</aboveBelow>
           </divisions>
           <horizontalObstacles>
-            <gap>0</gap>
-            <bridge>0</bridge>
+            <gap>__GAP_RATIO__</gap>
+            <bridge>__BRIDGE_RATIO__</bridge>
             <door>0</door>
             <puzzle>0</puzzle>
             <jump>0</jump>
@@ -56,8 +56,8 @@
     </AgentStart>
     <AgentHandlers>
       <VideoProducer want_depth="false">
-        <Width>__WIDTH__</Width>
-        <Height>__HEIGHT__</Height>
+        <Width>__RENDER_WIDTH__</Width>
+        <Height>__RENDER_HEIGHT__</Height>
       </VideoProducer>
       <ObservationFromFullStats />
       <ContinuousMovementCommands turnSpeedDegs="180">
@@ -65,13 +65,10 @@
           <command>attack</command>
         </ModifierList>
       </ContinuousMovementCommands>
-      <RewardForMissionEnd rewardForDeath="-200">
-        <Reward description="found_goal" reward="100" />
-        <Reward description="out_of_time" reward="-20" />
+      <RewardForMissionEnd rewardForDeath="-10">
+        <Reward description="found_goal" reward="10" />
+        <Reward description="out_of_time" reward="-10" />
       </RewardForMissionEnd>
-      <RewardForTouchingBlockType>
-        <Block type="gold_ore diamond_ore redstone_ore" reward="10" />
-      </RewardForTouchingBlockType>
       <AgentQuitFromTouchingBlockType>
         <Block type="gold_block diamond_block redstone_block" description="found_goal" />
       </AgentQuitFromTouchingBlockType>

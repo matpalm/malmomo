@@ -43,10 +43,8 @@ class Network(object):
     self.update_weights_op = self._create_variables_copy_op(source_network.namespace,
                                                            target_update_rate)
 
-  def update_weights(self):
+  def update_target_weights(self):
     """called during training to update target network."""
-    if self.update_weights_op is None:
-      raise Exception("not a target network? or set_source_network not yet called")
     return tf.get_default_session().run(self.update_weights_op)
 
   def trainable_model_vars(self):

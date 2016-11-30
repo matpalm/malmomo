@@ -3,6 +3,7 @@ import argparse
 import ckpt_util
 from multiprocessing import Process, Queue
 from concurrent import futures
+import json
 import grpc
 import models
 import model_pb2
@@ -17,19 +18,17 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 parser.add_argument('--width', type=int, default=160, help="render width")
 parser.add_argument('--height', type=int, default=120, help="render height")
 parser.add_argument('--batch-size', type=int, default=128, help="training batch size")
-parser.add_argument('--batches-per-step', type=int, default=5,
-                    help="number of batches to train per step")
+parser.add_argument('--batches-per-new-episode', type=int, default=5,
+                    help="number of batches to train per new episode")
 parser.add_argument('--event-log-in', type=str, default=None,
                     help="if set replay these event files into replay memory (comma"
                          " separated list")
 parser.add_argument('--event-log-in-num', type=int, default=None,
                     help="if set only read this many events from event-logs-in")
-#parser.add_argument('--ckpt-dir', type=str, default=None,
-#                    help="if set save ckpts to this dir")
-#parser.add_argument('--ckpt-save-freq', type=int, default=60,
-#                    help="freq (sec) to save ckpts to agents to reload from")
 parser.add_argument('--gpu-mem-fraction', type=float, default=0.5,
                     help="fraction of gpu mem to allocate")
+
+# TODO: event_log_in and in_num should move to run_replayer.py
 
 rm.add_opts(parser)
 ckpt_util.add_opts(parser)
@@ -37,7 +36,6 @@ models.add_opts(parser)
 util.add_opts(parser)
 opts = parser.parse_args()
 print >>sys.stderr, "OPTS", opts
-
 
 class EnqueueServer(model_pb2.ModelServicer):
   """ Enqueues calls to new episode."""
@@ -63,6 +61,7 @@ def run_trainer(episodes, opts):
                                   state_shape=render_shape,
                                   action_dim=2,
                                   load_factor=1.1)
+  # TODO! MOVE TO RUN_REPLAYER
   if opts.event_log_in:
     replay_memory.reset_from_event_logs(opts.event_log_in,
                                         opts.event_log_in_num)
@@ -82,27 +81,34 @@ def run_trainer(episodes, opts):
     for v in tf.all_variables():
       if '/biases:' not in v.name:
         print >>sys.stderr, v.name, util.shape_and_product_of(v)
+    network.setup_target_network()
+
     # while true process episodes from run_agents
     while True:
-      print util.dts(), ">waiting for episode"
+      start_time = time.time()
       episode = episodes.get()
-      print util.dts(), ">processing episode"
+      wait_time = time.time() - start_time
+
+      start_time = time.time()
       replay_memory.add_episode(episode)
-      print replay_memory.stats
+      losses = []
       if replay_memory.burnt_in():
-        losses = []
-        for _ in xrange(opts.batches_per_step):
-          print "BATCH"
+        for _ in xrange(opts.batches_per_new_episode):
           batch = replay_memory.batch(opts.batch_size)
-          network.train(batch)
-          losses.append(loss)
-          network.target_value_net.update_weights()
-          print "losses\t" + "\t".join(map(str, np.percentile(losses,
-                                                              np.linspace(0, 100, 11))))
+          loss = network.train(batch)
+          network.target_value_net.update_target_weights()
+          losses.append(float(loss))
         saver.save_if_required()
+      process_time = time.time() - start_time
+
+      print "STATS\t%s\t%s" % (util.dts(), json.dumps({"wait_time": wait_time,
+                                                       "process_time": process_time,
+                                                       "pending": episodes.qsize(),
+                                                       "losses": sorted(losses),
+                                                       "replay_memory": replay_memory.stats}))
 
 if __name__ == '__main__':
-  queued_episodes = Queue(10)
+  queued_episodes = Queue(5)
 
   enqueue_process = Process(target=run_enqueue_server, args=(queued_episodes,))
   enqueue_process.daemon = True
@@ -113,5 +119,4 @@ if __name__ == '__main__':
   trainer_process.start()
 
   while True:
-    print util.dts(), "pending", queued_episodes.qsize()
-    time.sleep(1)
+    time.sleep(2)

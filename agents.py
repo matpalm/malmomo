@@ -68,7 +68,7 @@ class NafAgent(object):
         if '/biases:' not in v.name:
           print >>sys.stderr, v.name, util.shape_and_product_of(v)
       # setup target network
-      self.network.post_init_setup()
+      #self.network.post_init_setup()  NOT FOR EVAL ROLLOUTS
 
   def action_given(self, state, is_eval):
     with self.sess.as_default():

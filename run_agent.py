@@ -12,6 +12,7 @@ import model_pb2
 import numpy as np
 import os
 from PIL import Image
+import specs
 import sys
 import time
 import util
@@ -34,9 +35,15 @@ parser.add_argument('--event-log-out', type=str, default=None,
 # TODO: do as specific agent that runs every N minutes, no as nth in each agent
 #parser.add_argument('--eval-freq', type=int, default=10,
 #                    help="do an eval (i.e. no noise) rollout every nth episodes")
-parser.add_argument('--mission', type=str, default="classroom_1room.xml",
-                    help="mission to run")
+parser.add_argument('--mission', type=int, default=1,
+                    help="which mission to run (see specs.py)")
 parser.add_argument('--overclock-rate', type=int, default=1, help="overclock multiplier")
+parser.add_argument('--eval', action='store_true',
+                    help="if set run in eval (ie no noise)")
+parser.add_argument('--onscreen-rendering', action='store_true',
+                    help="if set do (slower) onscreen rendering")
+parser.add_argument('--post-episode-sleep', type=int, default=1,
+                    help="time (sec) to sleep after each episode")
 parser.add_argument('--client-ports', type=str, default="10000",
                     help="comma seperated list of client ports")
 parser.add_argument('--trainer-port', type=int, default=20045,
@@ -65,13 +72,8 @@ def create_malmo_components():
   malmo = MalmoPython.AgentHost()
   # can't do this without more complex caching of world state vid frames
   #malmo.setObservationsPolicy(MalmoPython.ObservationsPolicy.LATEST_OBSERVATION_ONLY)
-  # define mission spec
-  spec = open(opts.mission).read()
-  spec = spec.replace("__WIDTH__", str(opts.width))
-  spec = spec.replace("__HEIGHT__", str(opts.height))
-  spec = spec.replace("__EPISODE_TIME_MS__", str(opts.episode_time_ms))
-  spec = spec.replace("__MS_PER_TICK__", str(overclock_tick_ms))
-  mission = MalmoPython.MissionSpec(spec, True)
+  # load mission spec
+  mission = MalmoPython.MissionSpec(specs.classroom(opts, overclock_tick_ms), True)
   mission_record = MalmoPython.MissionRecordSpec()
   # return all
   return client_pool, malmo, mission, mission_record
@@ -90,8 +92,7 @@ channel = grpc.insecure_channel("localhost:%d" % opts.trainer_port)
 trainer = model_pb2.ModelStub(channel)
 
 for episode_idx in itertools.count(0):
-#  eval_episode = (episode_idx % opts.eval_freq == 0)
-  print >>sys.stderr, util.dts(), "EPISODE", episode_idx, util.dts() #, "eval =", eval_episode
+  print util.dts(), "EPISODE", episode_idx, "eval", opts.eval
 
   # start new mission; explicitly wait for first observation
   # (not just world_state.has_mission_begun)
@@ -109,12 +110,12 @@ for episode_idx in itertools.count(0):
       time.sleep(1)
       client_pool, malmo, mission, mission_record = create_malmo_components()
 
+
   world_state = malmo.getWorldState()
   while len(world_state.observations) == 0:
-    print >>sys.stderr, "started, but no obs?"
     time.sleep(0.1)
     world_state = malmo.getWorldState()
-  print "START_TIME", time.time()-mission_start
+  print util.dts(), "START_TIME", time.time()-mission_start
 
   # run until the mission has ended
   episode = model_pb2.Episode()
@@ -136,7 +137,7 @@ for episode_idx in itertools.count(0):
     event.render.is_png_encoded = False
 
     # decide action given state and send to malmo
-    turn, move = agent.action_given(img, is_eval=False) #eval_episode)
+    turn, move = agent.action_given(img, is_eval=opts.eval)
     malmo.sendCommand("turn %f" % turn)
     malmo.sendCommand("move %f" % move)
     event.action.value.extend([turn, move])
@@ -157,22 +158,23 @@ for episode_idx in itertools.count(0):
 
     # dump debug
     print "ACTION\t%s" % json.dumps({"episode": episode_idx, "step": len(episode.event),
-                                     "turn": turn, "move": move, "eval": False,
+                                     "turn": turn, "move": move, "eval": opts.eval,
                                      "reward": event.reward})
 
   # report final reward for episode
   print "REWARD\t%s" % json.dumps({"episode": episode_idx,
                                    "reward": sum([e.reward for e in episode.event]),
-                                   "steps": len(episode.event), "eval": False})
+                                   "steps": len(episode.event), "eval": opts.eval})
 
   # end of episode
   agent.end_of_episode()
   try:
+    # TODO: send back queue size so agent can decide to backoff a bit?
     trainer.AddEpisode(episode)
   except grpc._channel._Rendezvous as e:
     # TODO: be more robust here
     print "warning: failed to add episode", e
   if event_log:
     event_log.add_episode(episode)
-#  print "trainer stats\t", trainer.stats()   TODO
   sys.stdout.flush()
+  time.sleep(opts.post_episode_sleep)

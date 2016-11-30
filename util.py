@@ -19,7 +19,7 @@ def add_opts(parser):
                       help="json serialised args for optimiser constructor")
 
 def dts():
-  return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+  return datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
 
 def l2_norm(tensor):
   """(row wise) l2 norm of a tensor"""
