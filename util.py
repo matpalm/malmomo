@@ -11,7 +11,7 @@ import StringIO
 #import yaml
 
 def add_opts(parser):
-  parser.add_argument('--gradient-clip', type=float, default=5,
+  parser.add_argument('--gradient-clip', type=float, default=10,
                       help="do global clipping to this norm")
   parser.add_argument('--optimiser', type=str, default="Adam",
                       help="tf.train.XXXOptimizer to use")

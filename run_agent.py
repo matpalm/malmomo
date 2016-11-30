@@ -27,14 +27,11 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 parser.add_argument('--run', type=int, default=None, help="output data to runs/N")
 parser.add_argument('--width', type=int, default=160, help="render width")
 parser.add_argument('--height', type=int, default=120, help="render height")
-parser.add_argument('--episode-time-ms', type=int, default=10000,
-                    help="episode timeout (ms)")
+parser.add_argument('--episode-time-sec', type=int, default=10,
+                    help="episode timeout (seconds)")
 parser.add_argument('--agent', type=str, default="Naf", help="{Naf,Random}")
 parser.add_argument('--event-log-out', type=str, default=None,
                     help="if set agent also write all episodes to this file")
-# TODO: do as specific agent that runs every N minutes, no as nth in each agent
-#parser.add_argument('--eval-freq', type=int, default=10,
-#                    help="do an eval (i.e. no noise) rollout every nth episodes")
 parser.add_argument('--mission', type=int, default=1,
                     help="which mission to run (see specs.py)")
 parser.add_argument('--overclock-rate', type=int, default=1, help="overclock multiplier")
@@ -47,7 +44,7 @@ parser.add_argument('--post-episode-sleep', type=int, default=1,
 parser.add_argument('--client-ports', type=str, default="10000",
                     help="comma seperated list of client ports")
 parser.add_argument('--trainer-port', type=int, default=20045,
-                    help="grpc port to trainer")
+                    help="grpc port to trainer. set to 0 to disable sending episodes")
 
 agents.add_opts(parser)
 ckpt_util.add_opts(parser)
@@ -88,8 +85,11 @@ agent = agent_cstr(opts)
 event_log = event_log.EventLog(opts.event_log_out) if opts.event_log_out else None
 
 # hook up connection to trainer
-channel = grpc.insecure_channel("localhost:%d" % opts.trainer_port)
-trainer = model_pb2.ModelStub(channel)
+if opts.trainer_port == 0:
+  trainer = None
+else:
+  channel = grpc.insecure_channel("localhost:%d" % opts.trainer_port)
+  trainer = model_pb2.ModelStub(channel)
 
 for episode_idx in itertools.count(0):
   print util.dts(), "EPISODE", episode_idx, "eval", opts.eval
@@ -122,7 +122,6 @@ for episode_idx in itertools.count(0):
   while world_state.is_mission_running:
     # extract render and convert to numpy array (w, h, 3) with values scaled 0.0 -> 1.0
     if len(world_state.video_frames) == 0:
-      print >>sys.stderr, "no vid frames? at step", len(episode.event)
       time.sleep(0.1)
       world_state = malmo.getWorldState()
       continue
@@ -168,12 +167,13 @@ for episode_idx in itertools.count(0):
 
   # end of episode
   agent.end_of_episode()
-  try:
-    # TODO: send back queue size so agent can decide to backoff a bit?
-    trainer.AddEpisode(episode)
-  except grpc._channel._Rendezvous as e:
-    # TODO: be more robust here
-    print "warning: failed to add episode", e
+  if trainer:
+    try:
+      # TODO: send back queue size so agent can decide to backoff a bit?
+      trainer.AddEpisode(episode)
+    except grpc._channel._Rendezvous as e:
+      # TODO: be more robust here
+      print "warning: failed to add episode", e
   if event_log:
     event_log.add_episode(episode)
   sys.stdout.flush()

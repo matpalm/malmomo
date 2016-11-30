@@ -5,14 +5,19 @@ from multiprocessing import Process, Queue
 from concurrent import futures
 import json
 import grpc
+import numpy as np
 import models
 import model_pb2
+import os
 import replay_memory as rm
 import sys
 import tensorflow as tf
 import time
-import numpy as np
 import util
+
+# reopen stdout/stderr unbuffered
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+sys.stderr = os.fdopen(sys.stderr.fileno(), 'w', 0)
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--width', type=int, default=160, help="render width")
@@ -27,8 +32,6 @@ parser.add_argument('--event-log-in-num', type=int, default=None,
                     help="if set only read this many events from event-logs-in")
 parser.add_argument('--gpu-mem-fraction', type=float, default=0.5,
                     help="fraction of gpu mem to allocate")
-
-# TODO: event_log_in and in_num should move to run_replayer.py
 
 rm.add_opts(parser)
 ckpt_util.add_opts(parser)
@@ -49,7 +52,6 @@ def run_enqueue_server(episodes):
   grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=3))
   model_pb2.add_ModelServicer_to_server(EnqueueServer(episodes), grpc_server)
   grpc_server.add_insecure_port('[::]:20045')
-  print ">start_episode_queuer"
   grpc_server.start()
   while True:
     time.sleep(10)
@@ -61,7 +63,6 @@ def run_trainer(episodes, opts):
                                   state_shape=render_shape,
                                   action_dim=2,
                                   load_factor=1.1)
-  # TODO! MOVE TO RUN_REPLAYER
   if opts.event_log_in:
     replay_memory.reset_from_event_logs(opts.event_log_in,
                                         opts.event_log_in_num)
@@ -84,6 +85,7 @@ def run_trainer(episodes, opts):
     network.setup_target_network()
 
     # while true process episodes from run_agents
+    print util.dts(), "waiting for episodes"
     while True:
       start_time = time.time()
       episode = episodes.get()
@@ -119,4 +121,4 @@ if __name__ == '__main__':
   trainer_process.start()
 
   while True:
-    time.sleep(2)
+    time.sleep(10)

@@ -10,7 +10,7 @@ Batch = collections.namedtuple("Batch", "state_1 action reward terminal_mask sta
 def add_opts(parser):
   parser.add_argument('--replay-memory-size', type=int, default=10000,
                       help="max size of replay memory")
-  parser.add_argument('--replay-memory-burn-in', type=int, default=100,
+  parser.add_argument('--replay-memory-burn-in', type=int, default=1,
                       help="dont train from replay memory until it reaches this size")
   parser.add_argument('--smooth-reward-factor', type=float, default=0.5,
                       help="if set use this value to smooth rewards")
@@ -57,8 +57,7 @@ class ReplayMemory(object):
     num_events = 0
     start = time.time()
     for log_file in log_files.split(","):
-      print "restoring from [%s]. num_episodes=%s num_events=%s" \
-        % (log_file, num_episodes, num_events)
+      print "restoring from [%s]" % log_file
       elr = event_log.EventLogReader(log_file.strip())
       for episode in elr.entries():
         if num_episodes%100 == 0: print "...reset_from_event_log restored", num_episodes, self.stats

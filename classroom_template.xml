@@ -65,10 +65,13 @@
           <command>attack</command>
         </ModifierList>
       </ContinuousMovementCommands>
-      <RewardForMissionEnd rewardForDeath="-10">
-        <Reward description="found_goal" reward="10" />
-        <Reward description="out_of_time" reward="-10" />
+      <RewardForMissionEnd rewardForDeath="-200">
+        <Reward description="found_goal" reward="100" />
+        <Reward description="out_of_time" reward="-20" />
       </RewardForMissionEnd>
+      <RewardForTouchingBlockType>
+        <Block type="gold_ore diamond_ore redstone_ore" reward="10" />
+      </RewardForTouchingBlockType>
       <AgentQuitFromTouchingBlockType>
         <Block type="gold_block diamond_block redstone_block" description="found_goal" />
       </AgentQuitFromTouchingBlockType>
