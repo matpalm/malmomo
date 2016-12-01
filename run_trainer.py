@@ -44,8 +44,10 @@ class EnqueueServer(model_pb2.ModelServicer):
   """ Enqueues calls to new episode."""
   def __init__(self, q):
     self.q = q
-  def AddEpisode(self, request, context):
-    self.q.put(request)
+  def AddEpisode(self, events, context):
+    episode = model_pb2.Episode()
+    episode.event.extend(events)
+    self.q.put(episode)
     return model_pb2.Empty()
 
 def run_enqueue_server(episodes):

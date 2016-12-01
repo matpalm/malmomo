@@ -1,8 +1,9 @@
 syntax = "proto3";
 
 service Model {
-  rpc ActionGivenState(Render) returns (Action) {}
-  rpc AddEpisode(Episode) returns (Empty) {}
+  # Add an episode. Note: because of grpc message size limits we
+  # actually synchronously stream the events directly.
+  rpc AddEpisode(stream Event) returns (Empty) {}
 }
 
 message Empty {
@@ -26,5 +27,6 @@ message Event {
 }
 
 message Episode {
+  # NOTE: Model.AddEpisode expects _only_ an event in episode.
   repeated Event event = 1;
 }

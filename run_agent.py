@@ -170,7 +170,7 @@ for episode_idx in itertools.count(0):
   if trainer:
     try:
       # TODO: send back queue size so agent can decide to backoff a bit?
-      trainer.AddEpisode(episode)
+      trainer.AddEpisode(episode.event)
     except grpc._channel._Rendezvous as e:
       # TODO: be more robust here
       print "warning: failed to add episode", e
