@@ -5,7 +5,7 @@ import sys, re
 
 def config(f):
   c = {}
-  for line in open("runs/%s/err" % f, "r"):
+  for line in open("%s" % f, "r"):
     m = re.match("^OPTS Namespace\((.*)\)$", line)
     if m:
       config = m.group(1)
