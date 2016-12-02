@@ -26,53 +26,114 @@ maze that generalises to a larger maze (but still gets stuck in corners :)
 
 # example usage
 
-## gather some offline data and then train a naf agent
+you need to
 
+* a trainer responsible for looking after the replay memory and actually training the network
+* N agents running in training mode (i.e. with action noise running as fast as possible)
+* N malmo instances, 1 for each agent
+* (optionally) a single agent running in eval mode (i.e. no action noise running every 60s or so)
+
+(optionally) you can run a agent in random mode to gather some data to seed the trainers replay memory.
+
+all examples work out of a common working experiment directory; `$R`
 ```
-# start malmo client
-<MALMO>/Minecraft/launchClient.sh
-
-# start an agent randomly gathering data
-mkdir random_agent
-./run.py --agent=Random --episode-time-ms=5000 --event-log-out=random_agent/events
-
-# review event data using event_log tools to dump imgs from every 10th episode
-./event_log --file=random_agent/events --img-output-dir=random_agent/imgs --nth=10
-# review /tmp/imgs/e00000/s00000.png, etc
-
-# train a NAF agent with replay memory seeded with first 1000 episodes from random agent
-mkdir naf_agent
-./run.py --agent=Naf \
---episode-time-ms=5000 \
---replay-memory-size=150000 \
---event-log-in=random_agent/events --event-log-in-num=1000 \
---event-log-out=naf_agent/events \
---ckpt-dir=naf_agent/ckpts
-
-# do an eval of this agent (i.e. no noise added to actions) using latest model checkpoint
-./run.py --agent=Naf \
---dont-store-new-memories --eval-freq=1 \
---event-log-out=naf_agent/eval_events \
---ckpt-dir=naf_agent/ckpts
-```
-
-### gather data across multiple instances
-
-```
-# start N, say 3, malmo clients
-shell1> launchClient.sh -port 11100
-shell2> launchClient.sh -port 11200
-shell3> launchClient.sh -port 11300
-```
-
-```
-# start N overclocked random agents
-shell4> ./run.py --agent=Random --overclock-rate=4 --event-log-out=random1.events --client-ports=11100,11200,11300
-shell5> ./run.py --agent=Random --overclock-rate=4 --event-log-out=random2.events --client-ports=11100,11200,11300
-shell6> ./run.py --agent=Random --overclock-rate=4 --event-log-out=random3.events --client-ports=11100,11200,11300
+export R=runs/some_experiment/working_dir
 ```
 
 to enable / disable verbose debugging issue a `kill -sigusr1` to running process.
+
+for the following we'll use N=3
+
+## 3 malmo instances
+
+```
+cd $MALMO_INSTALL/Minecraft
+./launchClient.sh --port 11100
+```
+```
+cd $MALMO_INSTALL/Minecraft
+./launchClient.sh --port 11200
+```
+```
+cd $MALMO_INSTALL/Minecraft
+./launchClient.sh --port 11300
+```
+
+## random agent (optional)
+
+if you want to preseed your training replay memory with some random agent actions you can run a random agent for awhile
+recording it's actions to an event log... just run this until you're bored...
+
+```
+./run_agent.py --agent=Random --mission=2 --malmo-ports=11100,11200,11300 --episode-time-sec=30 \
+--overclock-rate=4 --post-episode-sleep=0 --event-log-out=$R/random.events --trainer-port=0 \
+>$R/agent_rnd.out 2>$R/agent_rnd.err
+```
+
+you can review the `random.event` file to check number of events and reward distribution
+
+check number of events and reward distribution
+
+```
+$ ./event_log.py --file $R/random.events
+read 52 episodes for a total of 10217 events
+$ ./p/reward_freq.sh $R/agent_rnd.out
+0.01887  1.0   110
+0.03774  2.0   100
+0.05660  3.0    20
+0.05660  3.0    10
+0.35849  19.0    0
+0.07547	  4.0   -10
+0.39623  21.0  -20
+```
+
+## trainer
+
+we need one trainer per experiment. it's fine to have multiple running with different grpc ports for the agents to connect to
+(and, if training on gpu (HIGHLY recommended) you'll need to have each running on a fraction of gpu memory using
+`--gpu-mem-fraction`. this trainer will dump it's ckpts (for agents to reread) every 30sec.
+
+```
+./run_trainer.py \
+--replay-memory-size=200000 --ckpt-dir=$R/ckpts --ckpt-save-freq=30 \
+>$R/trainer.out 2>$R/trainer.err
+```
+
+## 3 agents running in training mode
+
+run a number of agents in training mode. the can share the malmo instances (in case one crashes) just have each one
+write to a distinct out/err file... each agent runs at x4 speed and uses offscreen rendering. these agents here don't
+record their events but could (see the random agent above)
+
+```
+./run_agent.py --agent=Naf --mission=2 --malmo-ports=11100,11200,11300 --episode-time-sec=30 \
+--overclock-rate=4 --post-episode-sleep=1 --ckpt-dir=$R/ckpts \
+>$R/agent_naf_1.out 2>$R/agent_naf_1.err
+```
+
+## (optional) agent running in eval mode
+
+it makes sense to run another agent running without an noise to record eval stats. this agent can run an episode every
+couple of minutes. note: as configured here this agent will send it's episodes to the replay memory.
+
+```
+./run_agent.py --agent=Naf --mission=2 --malmo-port=11100,11200,11300 --episode-time-sec=30 \
+--eval --overclock-rate=4 --post-episode-sleep=120 --ckpt-dir=$R/ckpts \
+>$R/agent_naf_eval.out 2>$R/agent_naf_eval.err
+```
+
+## (optional) run an agent at x1 for eyeballing
+
+in terms of speed the eval agent above runs as the training ones do, i.e. x4 speed and with offscreen rendering. to
+eyeball a run you can run an agent at x1 speed onscreen.
+
+we set `--trainer-port=0` so this agent doesn't send it's episodes to the trainer replay memory.
+
+```
+./run_agent.py --agent=Naf --mission=2 --client-port=11100,11200,11300 --episode-time-sec=30 \
+--eval --onscreen-rendering --overclock-rate=1 --post-episode-sleep=0 --trainer-port=0 \
+--ckpt-dir=$R/ckpts
+```
 
 # install stuff
 

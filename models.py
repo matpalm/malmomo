@@ -46,7 +46,7 @@ class ValueNetwork(base_network.Network):
       # expose self.input_state_representation since it will be the network "shared"
       # by l_value & output_action network when running --share-input-state-representation
       self.conv_net_output = self.conv_net_on(flipped_input_state, opts)
-      self.hidden_layers = self.hidden_layers_on(self.conv_net_output, [100, 100, 50])
+      self.hidden_layers = self.hidden_layers_on(self.conv_net_output, [100, 50])
       self.value = slim.fully_connected(scope='fc',
                                         inputs=self.hidden_layers,
                                         num_outputs=1,
@@ -90,7 +90,7 @@ class NafNetwork(base_network.Network):
           conv_net_output = self.value_net.conv_net_output
         else:
           conv_net_output = self.conv_net_on(input_state, opts)
-        hidden_layers = self.hidden_layers_on(conv_net_output, [100, 100])
+        hidden_layers = self.hidden_layers_on(conv_net_output, [100, 50])
         weights_initializer = tf.random_uniform_initializer(-opts.action_init_weights, opts.action_init_weights)
         self.output_action = slim.fully_connected(scope='fc',
                                                   inputs=hidden_layers,
@@ -122,7 +122,7 @@ class NafNetwork(base_network.Network):
           conv_net_output = self.value_net.conv_net_output
         else:
           conv_net_output = self.conv_net_on(input_state, opts)
-        hidden_layers = self.hidden_layers_on(conv_net_output, [100, 100])
+        hidden_layers = self.hidden_layers_on(conv_net_output, [100, 50])
         l_values = slim.fully_connected(scope='fc',
                                         inputs=hidden_layers,
                                         num_outputs=num_l_values,

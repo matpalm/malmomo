@@ -55,7 +55,6 @@ class Network(object):
     return v
 
   def hidden_layers_on(self, layer, layer_sizes):
-    # TODO: opts=None => will force exception on old calls....
     if not isinstance(layer_sizes, list):
       layer_sizes = map(int, layer_sizes.split(","))
     assert len(layer_sizes) > 0
@@ -83,23 +82,17 @@ class Network(object):
                                                      scale=None, offset=None,
                                                      variance_epsilon=1e-6)
 
-    # TODO: num_outputs here are really dependant on the incoming channels,
-    # which depend on the #repeats & cameras so they should be a param.
     model = slim.conv2d(whitened_input_layer, num_outputs=32, kernel_size=[3, 3], scope='conv1a')
-    model = slim.conv2d(model, num_outputs=32, kernel_size=[3, 3], scope='conv1b')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool1')
     self.pool1 = model
     print >>sys.stderr, "pool1", util.shape_and_product_of(model)
 
-    model = slim.conv2d(model, num_outputs=32, kernel_size=[3, 3], scope='conv2a')
-    model = slim.conv2d(model, num_outputs=32, kernel_size=[3, 3], scope='conv2b')
+    model = slim.conv2d(model, num_outputs=16, kernel_size=[3, 3], scope='conv2a')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool2')
     self.pool2 = model
     print >>sys.stderr, "pool2", util.shape_and_product_of(model)
 
-    model = slim.conv2d(model, num_outputs=16, kernel_size=[3, 3], scope='conv3a')
-    model = slim.conv2d(model, num_outputs=16, kernel_size=[3, 3], scope='conv3b')
-    model = slim.conv2d(model, num_outputs=8, kernel_size=[3, 3], scope='conv3c')
+    model = slim.conv2d(model, num_outputs=8, kernel_size=[3, 3], scope='conv3a')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool3')
     self.pool3 = model
     print >>sys.stderr, "pool3", util.shape_and_product_of(model)
