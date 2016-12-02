@@ -140,7 +140,7 @@ we set `--trainer-port=0` so this agent doesn't send it's episodes to the traine
 
 use `plots.sh` to visualise action distributions, rewards & net losses over time
 
-![eg_rollout](eg_rollout.gif)
+![plots](plots.png)
 
 use `viz_advantage_surface.py` to visualise the quadratic q-value surface of the 2d actions
 
