@@ -4,12 +4,12 @@ if [[ $# -ne 1 ]]; then
   exit 1
 fi
 
-set -ex
+export M=1000000
 
-export M=100000000
-./p/emit_stats.py --emit=losses --max-episode=$M $1 > /tmp/l.tsv &
-./p/emit_stats.py --emit=rewards --max-episode=$M $1 > /tmp/r.tsv &
-./p/emit_stats.py --emit=turn_moves --max-episode=$M $1 > /tmp/mt.tsv &
+set -ex
+./p/emit_stats.py --emit=losses --max-episode=$M $1/trainer.out > /tmp/l.tsv &
+./p/emit_stats.py --emit=rewards --max-episode=$M $1/eval.out > /tmp/r.tsv &
+./p/emit_stats.py --emit=turn_moves --max-episode=$M $1/eval.out > /tmp/mt.tsv &
 wait
 
 Rscript --vanilla ./p/emit_plots.R

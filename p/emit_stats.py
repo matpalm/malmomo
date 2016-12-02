@@ -49,11 +49,12 @@ class LossStats(object):
     self.filename = filename
 
   def process(self, line):
-    if not line.startswith("losses"): return
-    losses = line.strip().split("\t")
-    median_loss = losses[6]
-    print "\t".join([self.filename, str(self.n), median_loss])
-    self.n += 1
+    if not line.startswith("STATS"): return
+    _stats, _dts, data = line.strip().split("\t")
+    data = json.loads(data)
+    mean_loss = np.mean(data['losses'])
+    print "\t".join([self.filename, str(self.n), str(mean_loss)])
+    self.n += 1  # TODO: use data['batches_trained']
     return self.n - 1  # TODO: this isnt actually the episode...
 
   def end_of_file(self):
