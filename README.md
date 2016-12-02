@@ -136,6 +136,16 @@ we set `--trainer-port=0` so this agent doesn't send it's episodes to the traine
 --ckpt-dir=$R/ckpts
 ```
 
+## vizualise
+
+use `plots.sh` to visualise action distributions, rewards & net losses over time
+
+![eg_rollout](eg_rollout.gif)
+
+use `viz_advantage_surface.py` to visualise the quadratic q-value surface of the 2d actions
+
+[![link](https://img.youtube.com/vi/V7YQlhm1MnM/0.jpg)](https://www.youtube.com/watch?v=V7YQlhm1MnM)
+
 # install stuff
 
 malmomo depends on
