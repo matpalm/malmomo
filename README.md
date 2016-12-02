@@ -19,14 +19,15 @@ maze that generalises to a larger maze (but still gets stuck in corners :)
 
 # main components
 
-* run.py : orchestrates the interaction between malmo and an RL agent
+* run_trainer.py : runs replay memory & training of networks. reads episode sent from agents via rpc. dump model ckpts to disk on occasion.
+* run_agent.py : orchestrates the interaction between malmo and an RL agent. checks/reads new ckpts each episode.
 * agents.py : currently describes two agents; a random baseline and one based on a trained NAF network
 * replay_memory.py : provides the replay memory functionality for off policy training
 * event_log.py : provides the ability to read / write episodes to / from disk
 
 # example usage
 
-you need to
+you need to run ....
 
 * a trainer responsible for looking after the replay memory and actually training the network
 * N agents running in training mode (i.e. with action noise running as fast as possible)
