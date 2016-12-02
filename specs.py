@@ -20,7 +20,8 @@ def classroom(opts, overclock_tick_ms):
                           "GAP_RATIO": 1000,
                           "BRIDGE_RATIO": 0})
   elif opts.mission == 3:
-    # block is three rooms away
+    # same as #2 but block is three rooms away
+    # a model trained on #2 should be able to do this one
     substitutions.update({"WIDTH_LENGTH": 23,
                           "PATH_LENGTH": 3,
                           "DIVISIONS": 3,
