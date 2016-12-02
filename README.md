@@ -117,7 +117,7 @@ it makes sense to run another agent running without an noise to record eval stat
 couple of minutes. note: as configured here this agent will send it's episodes to the replay memory.
 
 ```
-./run_agent.py --agent=Naf --mission=2 --malmo-port=11100,11200,11300 --episode-time-sec=30 \
+./run_agent.py --agent=Naf --mission=2 --malmo-ports=11100,11200,11300 --episode-time-sec=30 \
 --eval --overclock-rate=4 --post-episode-sleep=120 --ckpt-dir=$R/ckpts \
 >$R/agent_naf_eval.out 2>$R/agent_naf_eval.err
 ```

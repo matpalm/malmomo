@@ -32,6 +32,8 @@ parser.add_argument('--event-log-in-num', type=int, default=None,
                     help="if set only read this many events from event-logs-in")
 parser.add_argument('--gpu-mem-fraction', type=float, default=0.5,
                     help="fraction of gpu mem to allocate")
+parser.add_argument('--trainer-port', type=int, default=20045,
+                    help="grpc port to expose for trainer")
 
 rm.add_opts(parser)
 ckpt_util.add_opts(parser)
@@ -53,7 +55,7 @@ class EnqueueServer(model_pb2.ModelServicer):
 def run_enqueue_server(episodes):
   grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=3))
   model_pb2.add_ModelServicer_to_server(EnqueueServer(episodes), grpc_server)
-  grpc_server.add_insecure_port('[::]:20045')
+  grpc_server.add_insecure_port("[::]:%d" % opts.trainer_port)
   grpc_server.start()
   while True:
     time.sleep(10)

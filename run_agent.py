@@ -41,8 +41,8 @@ parser.add_argument('--onscreen-rendering', action='store_true',
                     help="if set do (slower) onscreen rendering")
 parser.add_argument('--post-episode-sleep', type=int, default=1,
                     help="time (sec) to sleep after each episode")
-parser.add_argument('--client-ports', type=str, default="10000",
-                    help="comma seperated list of client ports")
+parser.add_argument('--malmo-ports', type=str, default="10000",
+                    help="comma seperated list of malmo client ports")
 parser.add_argument('--trainer-port', type=int, default=20045,
                     help="grpc port to trainer. set to 0 to disable sending episodes")
 
@@ -62,7 +62,7 @@ print >>sys.stderr, "opts.overclock_rate", opts.overclock_rate, \
 def create_malmo_components():
   # setup client pool
   client_pool = MalmoPython.ClientPool()
-  for port in map(int, opts.client_ports.split(",")):
+  for port in map(int, opts.malmo_ports.split(",")):
     print >>sys.stderr, "adding client with port %d" % port
     client_pool.add(MalmoPython.ClientInfo("127.0.0.1", port))
   # setup agent host
