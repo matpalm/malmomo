@@ -131,7 +131,7 @@ eyeball a run you can run an agent at x1 speed onscreen.
 we set `--trainer-port=0` so this agent doesn't send it's episodes to the trainer replay memory.
 
 ```
-./run_agent.py --agent=Naf --mission=2 --client-port=11100,11200,11300 --episode-time-sec=30 \
+./run_agent.py --agent=Naf --mission=2 --malmo-ports=11100,11200,11300 --episode-time-sec=30 \
 --eval --onscreen-rendering --overclock-rate=1 --post-episode-sleep=0 --trainer-port=0 \
 --ckpt-dir=$R/ckpts
 ```
