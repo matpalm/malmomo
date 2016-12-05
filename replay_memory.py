@@ -12,15 +12,12 @@ def add_opts(parser):
                       help="max size of replay memory")
   parser.add_argument('--replay-memory-burn-in', type=int, default=1,
                       help="dont train from replay memory until it reaches this size")
-  parser.add_argument('--smooth-reward-factor', type=float, default=0.5,
-                      help="if set use this value to smooth rewards")
 
 class ReplayMemory(object):
   def __init__(self, opts, state_shape, action_dim, load_factor=1.5):
     self.buffer_size = opts.replay_memory_size
     self.burn_in = opts.replay_memory_burn_in
     self.state_shape = state_shape
-    self.smooth_reward_factor = opts.smooth_reward_factor
     self.insert = 0
     self.full = False
 
@@ -52,7 +49,7 @@ class ReplayMemory(object):
     # some stats
     self.stats = collections.Counter()
 
-  def reset_from_event_logs(self, log_files, max_to_restore):
+  def reset_from_event_logs(self, log_files, max_to_restore, reset_smooth_reward_factor):
     num_episodes = 0
     num_events = 0
     start = time.time()
@@ -64,18 +61,16 @@ class ReplayMemory(object):
         if max_to_restore is not None and self.size() > max_to_restore: break
         num_episodes += 1
         num_events += len(episode.event)
-        self.add_episode(episode)
+        self.add_episode(episode, reset_smooth_reward_factor)
         if self.full: break
     print "reset_from_event_log took", time.time()-start, "sec"\
           " num_episodes", num_episodes, "num_events", num_events
     sys.stdout.flush()
 
-  def add_episode(self, episode):
-    # potentially smooth rewards. this only currently works for the case of
-    # only having a non-zero reward as last element..
+  def add_episode(self, episode, smooth_reward_factor=0.0):
     rewards = [e.reward for e in episode.event]
-    if self.smooth_reward_factor > 0:
-      rewards = util.smooth(rewards, self.smooth_reward_factor)
+    if smooth_reward_factor > 0:
+      rewards = util.smooth(rewards, smooth_reward_factor)
 
     self.stats['>add_episode'] += 1
     for n, event in enumerate(episode.event):

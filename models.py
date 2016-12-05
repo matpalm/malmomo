@@ -11,6 +11,8 @@ def add_opts(parser):
                       help="if set (dft) we have one network for processing input img that"
                            " is shared between value, l_value and output_action networks."
                            " if not set each net has it's own network.")
+  parser.add_argument('--use-dropout', action='store_true',
+                      help="if set use a dropout layer after flattened conv net output")
   parser.add_argument('--discount', type=float, default=0.99,
                       help="discount for RHS of bellman equation update")
   parser.add_argument('--action-noise-theta', type=float, default=0.01,

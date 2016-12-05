@@ -29,6 +29,8 @@ parser.add_argument('--width', type=int, default=160, help="render width")
 parser.add_argument('--height', type=int, default=120, help="render height")
 parser.add_argument('--episode-time-sec', type=int, default=10,
                     help="episode timeout (seconds)")
+parser.add_argument('--no-reward-default', type=int, default=-1,
+                    help="the dft reward to give when environment doesn't")
 parser.add_argument('--agent', type=str, default="Naf", help="{Naf,Random}")
 parser.add_argument('--event-log-out', type=str, default=None,
                     help="if set agent also write all episodes to this file")
@@ -153,7 +155,7 @@ for episode_idx in itertools.count(0):
       assert len(world_state.rewards) == 1
       event.reward = world_state.rewards[0].getValue()
     else:
-      event.reward = 0.0
+      event.reward = opts.no_reward_default
 
     # dump debug
     print "ACTION\t%s" % json.dumps({"episode": episode_idx, "step": len(episode.event),

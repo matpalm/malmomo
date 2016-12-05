@@ -4,8 +4,8 @@ import sys, json
 import numpy as np
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('files', nargs="+",
-                    help="space separated list of files to process")
+parser.add_argument('dirs', nargs="+",
+                    help="space separated list of run dirs to process")
 parser.add_argument('--max-episode', type=int, default=None,
                     help="if set exit when hitting this episode num")
 parser.add_argument('--emit', type=str, default=None,
@@ -13,11 +13,11 @@ parser.add_argument('--emit', type=str, default=None,
 opts = parser.parse_args()
 
 class TurnMoveStats(object):
-  def __init__(self, filename):
+  def __init__(self, run_dir):
     self.collecting_ep = None
     self.moves = []
     self.turns = []
-    self.filename = filename
+    self.filename = run_dir + "/eval.out"
 
   def emit_stats(self):
     print "\t".join(map(str, [self.filename, self.collecting_ep,
@@ -44,15 +44,19 @@ class TurnMoveStats(object):
 
 
 class LossStats(object):
-  def __init__(self, filename):
+  def __init__(self, run_dir):
     self.n = 0
-    self.filename = filename
+    self.filename = run_dir + "/trainer.out"
 
   def process(self, line):
     if not line.startswith("STATS"): return
     _stats, _dts, data = line.strip().split("\t")
     data = json.loads(data)
-    mean_loss = np.mean(data['losses'])
+    if 'losses' in data:
+      mean_loss = np.mean(data['losses'])  # old version
+    else:
+      mean_loss = np.mean(data['loss']['mean'])
+    mean_loss = min(mean_loss, 1e3)
     print "\t".join([self.filename, str(self.n), str(mean_loss)])
     self.n += 1  # TODO: use data['batches_trained']
     return self.n - 1  # TODO: this isnt actually the episode...
@@ -62,8 +66,8 @@ class LossStats(object):
 
 
 class RewardStats(object):
-  def __init__(self, filename):
-    self.filename = filename
+  def __init__(self, run_dir):
+    self.filename = run_dir + "/eval.out"
 
   def process(self, line):
     if not line.startswith("REWARD"): return
@@ -76,19 +80,19 @@ class RewardStats(object):
   def end_of_file(self):
     pass
 
-def new_processor(filename):
+def new_processor(run_dir):
   if opts.emit == "turn_moves":
-    return TurnMoveStats(filename)
+    return TurnMoveStats(run_dir)
   elif opts.emit == "losses":
-    return LossStats(filename)
+    return LossStats(run_dir)
   elif opts.emit == "rewards":
-    return RewardStats(filename)
+    return RewardStats(run_dir)
   else:
     raise Exception("unknown --emit")
 
-for filename in opts.files:
-  processor = new_processor(filename)
-  for line in open(filename, "r"):
+for run_dir in opts.dirs:
+  processor = new_processor(run_dir)
+  for line in open(processor.filename, "r"):
     episode_id = processor.process(line)
     if opts.max_episode is not None and episode_id > opts.max_episode:
       break

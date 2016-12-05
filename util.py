@@ -60,7 +60,7 @@ def shape_and_product_of(t):
       pass
   return "%s #%s" % (t.get_shape(), shape_product)
 
-def smooth(values, factor=0.9):
+def smooth(values, factor):
   """smooth non zero values (by factor) towards 0th element."""
   new_values = [0] * len(values)
   for i in reversed(range(len(values))):

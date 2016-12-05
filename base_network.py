@@ -5,9 +5,6 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import util
 
-# TODO: move opts only used in this module to an add_opts method
-#       requires fixing the bullet-before-slim problem though :/
-
 IS_TRAINING = tf.placeholder(tf.bool, name="is_training")
 FLIP_HORIZONTALLY = tf.placeholder(tf.bool, name="flip_horizontally")
 
@@ -69,7 +66,7 @@ class Network(object):
     return layer
 
   def conv_net_on(self, input_layer, opts):
-    # TODO: reinclude batch_norm config
+    # TODO: reinclude batch_norm config, hasn't been helping at all...
 
     # convert input_layer from uint8 (0, 255) to float32 (0.0, 1.0)
     input_layer = tf.to_float(input_layer) / 255
@@ -82,22 +79,34 @@ class Network(object):
                                                      scale=None, offset=None,
                                                      variance_epsilon=1e-6)
 
-    model = slim.conv2d(whitened_input_layer, num_outputs=32, kernel_size=[3, 3], scope='conv1a')
+    model = slim.conv2d(whitened_input_layer, num_outputs=8, kernel_size=[5, 5], scope='conv1a')
+    model = slim.conv2d(whitened_input_layer, num_outputs=8, kernel_size=[5, 5], scope='conv1b')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool1')
     self.pool1 = model
     print >>sys.stderr, "pool1", util.shape_and_product_of(model)
 
-    model = slim.conv2d(model, num_outputs=16, kernel_size=[3, 3], scope='conv2a')
+    model = slim.conv2d(model, num_outputs=16, kernel_size=[5, 5], scope='conv2a')
+    model = slim.conv2d(model, num_outputs=16, kernel_size=[5, 5], scope='conv2b')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool2')
     self.pool2 = model
     print >>sys.stderr, "pool2", util.shape_and_product_of(model)
 
-    model = slim.conv2d(model, num_outputs=8, kernel_size=[3, 3], scope='conv3a')
+    model = slim.conv2d(model, num_outputs=32, kernel_size=[3, 3], scope='conv3a')
+    model = slim.conv2d(model, num_outputs=32, kernel_size=[3, 3], scope='conv3b')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool3')
     self.pool3 = model
     print >>sys.stderr, "pool3", util.shape_and_product_of(model)
 
-    return slim.flatten(model, scope='flat')
+    # do simple maxout on output to reduce dimensionality down for the upcoming
+    # fully connected layers. see  https://arxiv.org/abs/1302.4389
+#    model = tf.reshape(model, (-1, 15, 20, 8, 4))      # (?, 15, 20, 32) -> (?, 15, 20, 8, 4)
+#    model = tf.reduce_max(model, reduction_indices=4)  # (?, 15, 20, 8)
+#    print >>sys.stderr, "maxout", util.shape_and_product_of(model)
+
+    model = slim.flatten(model, scope='flat')
+    if opts.use_dropout:
+      model = slim.dropout(model, is_training=IS_TRAINING, scope="drop" % i)
+    return model
 
 
   def render_convnet_activations(self, activations, filename_base):

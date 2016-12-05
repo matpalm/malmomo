@@ -28,6 +28,8 @@ parser.add_argument('--batches-per-new-episode', type=int, default=5,
 parser.add_argument('--event-log-in', type=str, default=None,
                     help="if set replay these event files into replay memory (comma"
                          " separated list")
+parser.add_argument('--reset-smooth-reward-factor', type=float, default=0.9,
+                    help="use this value to smooth rewards from reset_from_event_logs")
 parser.add_argument('--event-log-in-num', type=int, default=None,
                     help="if set only read this many events from event-logs-in")
 parser.add_argument('--gpu-mem-fraction', type=float, default=0.5,
@@ -69,7 +71,8 @@ def run_trainer(episodes, opts):
                                   load_factor=1.1)
   if opts.event_log_in:
     replay_memory.reset_from_event_logs(opts.event_log_in,
-                                        opts.event_log_in_num)
+                                        opts.event_log_in_num,
+                                        opts.reset_smooth_reward_factor)
 
   # init network for training
   config = tf.ConfigProto()
@@ -107,11 +110,13 @@ def run_trainer(episodes, opts):
         saver.save_if_required()
       process_time = time.time() - start_time
 
-      print "STATS\t%s\t%s" % (util.dts(), json.dumps({"wait_time": wait_time,
-                                                       "process_time": process_time,
-                                                       "pending": episodes.qsize(),
-                                                       "losses": sorted(losses),
-                                                       "replay_memory": replay_memory.stats}))
+      stats = {"wait_time": wait_time,
+               "process_time": process_time,
+               "pending": episodes.qsize(),
+               "loss": {"min": np.min(losses), "median": np.median(losses),
+                        "mean": np.mean(losses), "max": np.max(losses)},
+               "replay_memory": replay_memory.stats}
+      print "STATS\t%s\t%s" % (util.dts(), json.dumps(stats))
 
 if __name__ == '__main__':
   queued_episodes = Queue(5)
