@@ -79,10 +79,12 @@ class NafNetwork(base_network.Network):
     # build other placeholders
     self.input_action = tf.placeholder(shape=[None, action_dim],
                                        dtype=tf.float32, name="input_action")
-    self.reward =  tf.placeholder(shape=[None, 1],
-                                  dtype=tf.float32, name="reward")
+    self.reward = tf.placeholder(shape=[None, 1],
+                                 dtype=tf.float32, name="reward")
     self.terminal_mask = tf.placeholder(shape=[None, 1],
                                         dtype=tf.float32, name="terminal_mask")
+    self.importance_weight = tf.placeholder(shape=[None, 1],
+                                            dtype=tf.float32, name="importance_weight")
 
     with tf.variable_scope(namespace):
       # mu (output_action) is also a simple NN mapping input state -> action
@@ -173,13 +175,14 @@ class NafNetwork(base_network.Network):
                                      self.target_value_net.value)
       self.target_y = tf.stop_gradient(self.target_y)
 
-      # loss is squared difference that we want to minimise.
-      self.loss = tf.reduce_mean(tf.pow(self.q_value - self.target_y, 2))
+      # loss is squared difference that we want to minimise rescaled by important weight
+      self.loss = tf.pow(self.q_value - self.target_y, 2)
+      rescaled_loss = self.loss * self.importance_weight
       with tf.variable_scope("optimiser"):
         # dynamically create optimiser based on opts
         optimiser = util.construct_optimiser(opts)
         # calc gradients
-        gradients = optimiser.compute_gradients(self.loss)
+        gradients = optimiser.compute_gradients(tf.reduce_mean(rescaled_loss))
         # potentially clip and wrap with debugging tf.Print
         gradients, self.print_gradient_norms = util.clip_and_debug_gradients(gradients, opts)
         # apply
@@ -220,6 +223,7 @@ class NafNetwork(base_network.Network):
       print "batch.reward", batch.reward.T
       print "batch.terminal_mask", batch.terminal_mask.T
       print "flip_horizontally", flip_horizontally
+      print "weights", batch.weight.T
       values = tf.get_default_session().run([self._l_values, self.value_net.value,
                                              self.advantage, self.target_value_net.value,
                                              self.print_gradient_norms],
@@ -228,21 +232,23 @@ class NafNetwork(base_network.Network):
                    self.reward: batch.reward,
                    self.terminal_mask: batch.terminal_mask,
                    self.input_state_2: batch.state_2,
+                   self.importance_weight: batch.weight,
                    base_network.IS_TRAINING: True,
                    base_network.FLIP_HORIZONTALLY: flip_horizontally})
       values = [np.squeeze(v) for v in values]
-      print "_l_values",
-      print values[0].T
+      print "_l_values", values[0].T
       print "value_net.value        ", values[1].T
       print "advantage              ", values[2].T
       print "target_value_net.value ", values[3].T
 
-    _, _, l = tf.get_default_session().run([self.check_numerics, self.train_op, self.loss],
+    _, _, l = tf.get_default_session().run([self.check_numerics, self.train_op,
+                                            self.loss],
       feed_dict={self.input_state: batch.state_1,
                  self.input_action: batch.action,
                  self.reward: batch.reward,
                  self.terminal_mask: batch.terminal_mask,
                  self.input_state_2: batch.state_2,
+                 self.importance_weight: batch.weight,
                  base_network.IS_TRAINING: True,
                  base_network.FLIP_HORIZONTALLY: flip_horizontally})
     return l

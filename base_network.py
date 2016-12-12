@@ -80,22 +80,29 @@ class Network(object):
                                                      variance_epsilon=1e-6)
 
     model = slim.conv2d(whitened_input_layer, num_outputs=8, kernel_size=[5, 5], scope='conv1a')
-    model = slim.conv2d(whitened_input_layer, num_outputs=8, kernel_size=[5, 5], scope='conv1b')
+#    model = slim.conv2d(whitened_input_layer, num_outputs=8, kernel_size=[5, 5], scope='conv1b')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool1')
     self.pool1 = model
     print >>sys.stderr, "pool1", util.shape_and_product_of(model)
 
     model = slim.conv2d(model, num_outputs=16, kernel_size=[5, 5], scope='conv2a')
-    model = slim.conv2d(model, num_outputs=16, kernel_size=[5, 5], scope='conv2b')
+#    model = slim.conv2d(model, num_outputs=16, kernel_size=[5, 5], scope='conv2b')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool2')
     self.pool2 = model
     print >>sys.stderr, "pool2", util.shape_and_product_of(model)
 
     model = slim.conv2d(model, num_outputs=32, kernel_size=[3, 3], scope='conv3a')
-    model = slim.conv2d(model, num_outputs=32, kernel_size=[3, 3], scope='conv3b')
+#    model = slim.conv2d(model, num_outputs=32, kernel_size=[3, 3], scope='conv3b')
     model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool3')
     self.pool3 = model
     print >>sys.stderr, "pool3", util.shape_and_product_of(model)
+
+    # a final unpooled conv net just to drop params down. maybe pool here too actually?
+#    model = slim.conv2d(model, num_outputs=32, kernel_size=[3, 3], scope='conv4a')
+#    model = slim.conv2d(model, num_outputs=32, kernel_size=[3, 3], scope='conv3b')
+#    model = slim.max_pool2d(model, kernel_size=[2, 2], scope='pool4')
+#    self.pool3 = model
+#    print >>sys.stderr, "pool4", util.shape_and_product_of(model)
 
     # do simple maxout on output to reduce dimensionality down for the upcoming
     # fully connected layers. see  https://arxiv.org/abs/1302.4389

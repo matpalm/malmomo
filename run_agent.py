@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 parser.add_argument('--run', type=int, default=None, help="output data to runs/N")
 parser.add_argument('--width', type=int, default=160, help="render width")
 parser.add_argument('--height', type=int, default=120, help="render height")
-parser.add_argument('--episode-time-sec', type=int, default=10,
+parser.add_argument('--episode-time-sec', type=int, default=30,
                     help="episode timeout (seconds)")
 parser.add_argument('--no-reward-default', type=int, default=-1,
                     help="the dft reward to give when environment doesn't")
@@ -36,7 +36,8 @@ parser.add_argument('--event-log-out', type=str, default=None,
                     help="if set agent also write all episodes to this file")
 parser.add_argument('--mission', type=int, default=1,
                     help="which mission to run (see specs.py)")
-parser.add_argument('--overclock-rate', type=int, default=1, help="overclock multiplier")
+parser.add_argument('--overclock-rate', type=int, default=4,
+                    help="overclock multiplier")
 parser.add_argument('--eval', action='store_true',
                     help="if set run in eval (ie no noise)")
 parser.add_argument('--onscreen-rendering', action='store_true',

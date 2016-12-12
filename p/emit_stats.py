@@ -54,8 +54,11 @@ class LossStats(object):
     data = json.loads(data)
     if 'losses' in data:
       mean_loss = np.mean(data['losses'])  # old version
-    else:
+    elif 'loss' in data:
       mean_loss = np.mean(data['loss']['mean'])
+    else:
+      # burning in still
+      return
     mean_loss = min(mean_loss, 1e3)
     print "\t".join([self.filename, str(self.n), str(mean_loss)])
     self.n += 1  # TODO: use data['batches_trained']

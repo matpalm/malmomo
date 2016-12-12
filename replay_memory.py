@@ -1,17 +1,30 @@
 import collections
 import event_log
 import numpy as np
+import prio_replay
 import sys
 import time
 import util
 
-Batch = collections.namedtuple("Batch", "state_1 action reward terminal_mask state_2")
+Batch = collections.namedtuple("Batch",
+                               "idxs state_1 action reward terminal_mask state_2 weight")
 
 def add_opts(parser):
-  parser.add_argument('--replay-memory-size', type=int, default=10000,
-                      help="max size of replay memory")
+  parser.add_argument('--replay-memory-size', type=int, default=2**18,
+                      help="max size of replay memory")  # 260K
   parser.add_argument('--replay-memory-burn-in', type=int, default=1,
                       help="dont train from replay memory until it reaches this size")
+  parser.add_argument('--replay-prio-epsilon', type=float, default=1.0,
+                      help="small value to add to every loss." +
+                           " larger => more uniform sampling.")
+  parser.add_argument('--replay-prio-alpha', type=float, default=0.6,
+                      help="pow to raise loss to (after adding p_epsilon)," +
+                           " 0=>uniform sampling. 1=linear")
+  parser.add_argument('--replay-prio-beta', type=float, default=0.4,
+                      help="importance sampling bias correction rescaling factor")
+  parser.add_argument('--replay-prio-p-max', type=float, default=100.0,
+                      help="max value prio can take (after +p_epsilon ^p_alpha)")
+
 
 class ReplayMemory(object):
   def __init__(self, opts, state_shape, action_dim, load_factor=1.5):
@@ -36,6 +49,13 @@ class ReplayMemory(object):
     shape = [self.state_buffer_size] + list(state_shape)
     self.state = np.empty(shape, dtype=np.uint8)  # (0, 255)
 
+    # additional data structure for managing priority replay sampling
+    self.prio_replay = prio_replay.PrioExperienceReplay(self.buffer_size,
+                                                        p_epsilon=opts.replay_prio_epsilon,
+                                                        p_alpha=opts.replay_prio_alpha,
+                                                        p_beta=opts.replay_prio_beta,
+                                                        p_max=opts.replay_prio_p_max)
+
     # keep track of free slots in state buffer
     self.state_free_slots = list(range(self.state_buffer_size))
 
@@ -57,11 +77,11 @@ class ReplayMemory(object):
       print "restoring from [%s]" % log_file
       elr = event_log.EventLogReader(log_file.strip())
       for episode in elr.entries():
-        if num_episodes%100 == 0: print "...reset_from_event_log restored", num_episodes, self.stats
-        if max_to_restore is not None and self.size() > max_to_restore: break
+        self.add_episode(episode, reset_smooth_reward_factor)
         num_episodes += 1
         num_events += len(episode.event)
-        self.add_episode(episode, reset_smooth_reward_factor)
+        if num_episodes%100 == 0: print "...reset_from_event_log restored", num_episodes, self.stats
+        if max_to_restore is not None and self.size() > max_to_restore: break
         if self.full: break
     print "reset_from_event_log took", time.time()-start, "sec"\
           " num_episodes", num_episodes, "num_events", num_events
@@ -73,6 +93,7 @@ class ReplayMemory(object):
       rewards = util.smooth(rewards, smooth_reward_factor)
 
     self.stats['>add_episode'] += 1
+    inserts = []
     for n, event in enumerate(episode.event):
       if n == 0:
         # for first event need to explicitly store state
@@ -87,8 +108,9 @@ class ReplayMemory(object):
         # for last event store zero state for null state_2 (see init for more info)
         terminal = True
         state_2_idx = self.zero_state_idx
-      # add element to replay memory
-      self._add(state_1_idx, event.action.value, rewards[n], terminal, state_2_idx)
+      # add element to replay memory recording where it was added
+      insert_idx = self._add(state_1_idx, event.action.value, rewards[n], terminal, state_2_idx)
+      self.prio_replay.new_experience(insert_idx)
       # roll state_2_idx to become state_1_idx for next step
       state_1_idx = state_2_idx
 
@@ -109,6 +131,9 @@ class ReplayMemory(object):
       self.state_free_slots.append(self.state_1_idx[self.insert])
 #      print "full; so free slot", self.state_1_idx[self.insert]
 
+    # record insert slot for return
+    inserted_at = self.insert
+
     # add s1, a, r, s2
     self.state_1_idx[self.insert] = s1_idx
     self.action[self.insert] = a
@@ -124,28 +149,29 @@ class ReplayMemory(object):
       self.insert = 0
       self.full = True
 
+    return inserted_at
+
   def size(self):
     return self.buffer_size if self.full else self.insert
 
   def burnt_in(self):
     return self.size() > self.burn_in
 
-  def random_indexes(self, n=1):
-    if self.full:
-      return np.random.randint(0, self.buffer_size, n)
-    elif self.insert == 0:  # empty
-      return []
-    else:
-      return np.random.randint(0, self.insert, n)
-
   def batch(self, batch_size=None):
     self.stats['>batch'] += 1
-    idxs = self.random_indexes(batch_size)
-    return Batch(np.copy(self.state[self.state_1_idx[idxs]]),
+
+    # sample indexes and importance weights
+    idxs, weights = self.prio_replay.sample(batch_size)
+
+    return Batch(idxs, np.copy(self.state[self.state_1_idx[idxs]]),
                  np.copy(self.action[idxs]),
                  np.copy(self.reward[idxs]),
                  np.copy(self.terminal_mask[idxs]),
-                 np.copy(self.state[self.state_2_idx[idxs]]))
+                 np.copy(self.state[self.state_2_idx[idxs]]),
+                 np.array(weights).reshape(-1, 1))
+
+  def update_priorities(self, idxs, losses):
+    self.prio_replay.update_priorities(idxs, losses)
 
   def dump_replay_memory_images_to_disk(self, directory):
     print ">dump_replay_memory_images_to_disk", directory

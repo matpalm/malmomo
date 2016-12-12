@@ -30,8 +30,10 @@ parser.add_argument('--batches-per-new-episode', type=int, default=5,
 parser.add_argument('--event-log-in', type=str, default=None,
                     help="if set replay these event files into replay memory (comma"
                          " separated list")
-parser.add_argument('--reset-smooth-reward-factor', type=float, default=0.9,
+parser.add_argument('--reset-smooth-reward-factor', type=float, default=0.5,
                     help="use this value to smooth rewards from reset_from_event_logs")
+parser.add_argument('--smooth-reward-factor', type=float, default=0.5,
+                    help="use this value to smooth rewards added during training")
 parser.add_argument('--event-log-in-num', type=int, default=None,
                     help="if set only read this many events from event-logs-in")
 parser.add_argument('--gpu-mem-fraction', type=float, default=0.5,
@@ -101,23 +103,28 @@ def run_trainer(episodes, opts):
       wait_time = time.time() - start_time
 
       start_time = time.time()
-      replay_memory.add_episode(episode)
+      replay_memory.add_episode(episode,
+                                smooth_reward_factor=opts.smooth_reward_factor)
       losses = []
       if replay_memory.burnt_in():
         for _ in xrange(opts.batches_per_new_episode):
           batch = replay_memory.batch(opts.batch_size)
-          loss = network.train(batch)
+          batch_losses = network.train(batch).T[0]  # .T[0] => (B, 1) -> (B,)
+          replay_memory.update_priorities(batch.idxs, batch_losses)
           network.target_value_net.update_target_weights()
-          losses.append(float(loss))
+          losses.extend(batch_losses)
         saver.save_if_required()
       process_time = time.time() - start_time
 
       stats = {"wait_time": wait_time,
                "process_time": process_time,
                "pending": episodes.qsize(),
-               "loss": {"min": np.min(losses), "median": np.median(losses),
-                        "mean": np.mean(losses), "max": np.max(losses)},
                "replay_memory": replay_memory.stats}
+      if losses:
+        stats['loss'] = {"min": float(np.min(losses)),
+                         "median": float(np.median(losses)),
+                         "mean": float(np.mean(losses)),
+                         "max": float(np.max(losses))}
       print "STATS\t%s\t%s" % (util.dts(), json.dumps(stats))
 
 if __name__ == '__main__':
