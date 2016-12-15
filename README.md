@@ -49,21 +49,16 @@ for the following we'll use N=3
 
 ```
 cd $MALMO_INSTALL/Minecraft
-./launchClient.sh --port 11100
-```
-```
-cd $MALMO_INSTALL/Minecraft
-./launchClient.sh --port 11200
-```
-```
-cd $MALMO_INSTALL/Minecraft
-./launchClient.sh --port 11300
+./launchClient.sh --port 11100 &
+./launchClient.sh --port 11200 &
+./launchClient.sh --port 11300 &
 ```
 
 ## random agent (optional)
 
 if you want to preseed your training replay memory with some random agent actions you can run a random agent for awhile
-recording it's actions to an event log... just run this until you're bored...
+recording it's actions to an event log... just run this until you're bored... `--event-log-out` denotes writing the
+episodes to a log file and `--trainer-port=0` denotes not sending it to any trainer.
 
 ```
 ./run_agent.py --agent=Random --mission=2 --malmo-ports=11100,11200,11300 --episode-time-sec=30 \
@@ -72,8 +67,6 @@ recording it's actions to an event log... just run this until you're bored...
 ```
 
 you can review the `random.event` file to check number of events and reward distribution
-
-check number of events and reward distribution
 
 ```
 $ ./event_log.py --file $R/random.events
@@ -88,11 +81,17 @@ $ ./p/reward_freq.sh $R/agent_rnd.out
 0.39623  21.0  -20
 ```
 
+or export some/all of the images from the log for review, making animation vizs etc
+
+```
+$ ./event_log.py --file $R/random.events --img-output-dir=$R/imgs
+```
+
 ## trainer
 
 we need one trainer per experiment. it's fine to have multiple running with different grpc ports for the agents to connect to
 (and, if training on gpu (HIGHLY recommended) you'll need to have each running on a fraction of gpu memory using
-`--gpu-mem-fraction`. this trainer will dump it's ckpts (for agents to reread) every 30sec.
+`--gpu-mem-fraction`. this trainer receives episodes (from agents) and writes ckpts (for agents to reread) every 30sec.
 
 ```
 ./run_trainer.py \
@@ -102,31 +101,31 @@ we need one trainer per experiment. it's fine to have multiple running with diff
 
 ## 3 agents running in training mode
 
-run a number of agents in training mode. the can share the malmo instances (in case one crashes) just have each one
+run a number of agents in training mode. they can share the malmo instances (in case one crashes) just have each one
 write to a distinct out/err file... each agent runs at x4 speed and uses offscreen rendering. these agents here don't
 record their events but could (see the random agent above)
 
 ```
 ./run_agent.py --agent=Naf --mission=2 --malmo-ports=11100,11200,11300 --episode-time-sec=30 \
 --overclock-rate=4 --post-episode-sleep=1 --ckpt-dir=$R/ckpts \
->$R/agent_naf_1.out 2>$R/agent_naf_1.err
+>$R/naf_1.out 2>$R/naf_1.err
 ```
 
 ## (optional) agent running in eval mode
 
-it makes sense to run another agent running without an noise to record eval stats. this agent can run an episode every
-couple of minutes. note: as configured here this agent will send it's episodes to the replay memory.
+it makes sense to run another agent running without any noise to record eval stats. this agent can run an episode every
+couple of minutes.
 
 ```
 ./run_agent.py --agent=Naf --mission=2 --malmo-ports=11100,11200,11300 --episode-time-sec=30 \
 --eval --overclock-rate=4 --post-episode-sleep=120 --ckpt-dir=$R/ckpts \
->$R/agent_naf_eval.out 2>$R/agent_naf_eval.err
+>$R/eval.out 2>$R/eval.err
 ```
 
 ## (optional) run an agent at x1 for eyeballing
 
 in terms of speed the eval agent above runs as the training ones do, i.e. x4 speed and with offscreen rendering. to
-eyeball a run you can run an agent at x1 speed onscreen.
+eyeball a run you can run an agent at x1 speed with onscreen rendering.
 
 we set `--trainer-port=0` so this agent doesn't send it's episodes to the trainer replay memory.
 
