@@ -36,7 +36,7 @@ parser.add_argument('--smooth-reward-factor', type=float, default=0.5,
                     help="use this value to smooth rewards added during training")
 parser.add_argument('--event-log-in-num', type=int, default=None,
                     help="if set only read this many events from event-logs-in")
-parser.add_argument('--gpu-mem-fraction', type=float, default=0.5,
+parser.add_argument('--gpu-mem-fraction', type=float, default=0.3,
                     help="fraction of gpu mem to allocate")
 parser.add_argument('--trainer-port', type=int, default=20045,
                     help="grpc port to expose for trainer")
